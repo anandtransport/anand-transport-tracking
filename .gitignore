@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+anand_transport.db
+.env

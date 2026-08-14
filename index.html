@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block title %}Shipment Tracking | Anand Transport{% endblock %}
+{% block content %}<section class="hero"><div class="wrap"><div class="eyebrow">ANAND TRANSPORT COMPANY</div><h1>Track your shipment<br><span>in real time.</span></h1><p>Enter your Docket / AWB number to check the latest shipment status.</p>
+<form class="track" method="post" action="{{url_for('track')}}"><input name="docket" required placeholder="Enter Docket / AWB Number"><button>Track Shipment</button></form><small>Demo docket: <b>AT100001</b></small></div></section>
+<section class="cards wrap"><article><b>📦 Safe Handling</b><p>Your cargo is handled with care.</p></article><article><b>📍 Live Status</b><p>View the latest shipment movement.</p></article><article><b>🚚 Reliable Delivery</b><p>Professional transport services.</p></article></section>{% endblock %}
