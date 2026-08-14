@@ -198,6 +198,12 @@ def api_track(docket):
     con.close()
     return jsonify({"found":True,"shipment":dict(s),"history":[dict(x) for x in events]})
 
-if __name__=="__main__":
-    init_db()
-    app.run(host="0.0.0.0",port=int(os.environ.get("PORT",5000)),debug=True)
+# Initialize database when the app starts
+init_db()
+
+if __name__ == "__main__":
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=True
+    )
