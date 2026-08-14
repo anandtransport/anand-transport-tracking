@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3, os
+import sqlite3
+import os
 from functools import wraps
 from datetime import datetime
 
