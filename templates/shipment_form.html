@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if shipment else 'Add' }} Shipment{% endblock %}
+
+{% block content %}
+<main class="wrap page">
+<form class="panel form" method="post">
+
+<h2>{{ 'Edit' if shipment else 'Add' }} Shipment</h2>
+
+<div class="grid">
+
+<label>
+Docket / AWB
+<input name="docket" required value="{{ shipment.docket if shipment else '' }}">
+</label>
+
+<label>
+Booking Date
+<input type="date" name="booking_date" required value="{{ shipment.booking_date if shipment else '' }}">
+</label>
+
+<label>
+From
+<input name="source" required value="{{ shipment.source if shipment else '' }}">
+</label>
+
+<label>
+To
+<input name="destination" required value="{{ shipment.destination if shipment else '' }}">
+</label>
+
+<label>
+Consignor
+<input name="consignor" value="{{ shipment.consignor if shipment else '' }}">
+</label>
+
+<label>
+Consignee
+<input name="consignee" value="{{ shipment.consignee if shipment else '' }}">
+</label>
+
+<label>
+Packages
+<input type="number" min="1" name="packages" value="{{ shipment.packages if shipment else 1 }}">
+</label>
+
+<label>
+Weight
+<input name="weight" value="{{ shipment.weight if shipment else '' }}">
+</label>
+
+<label>
+Status
+<select name="status">
+{% for x in ['Booked','Picked Up','In Transit','Arrived at Destination','Out for Delivery','Delivered','On Hold'] %}
+<option {% if shipment and shipment.status==x %}selected{% endif %}>{{ x }}</option>
+{% endfor %}
+</select>
+</label>
+
+<label>
+Current Location
+<input name="location" value="{{ shipment.location if shipment else '' }}">
+</label>
+
+<!-- NEW: EVENT DATE -->
+<label>
+Event Date
+<input type="date" name="event_date" required value="{{ latest_event.event_time[:10] if latest_event else '' }}">
+</label>
+
+<!-- NEW: EVENT TIME -->
+<label>
+Event Time
+<input type="time" name="event_time" required value="{{ latest_event.event_time[11:16] if latest_event else '' }}">
+</label>
+
+<label>
+Expected Delivery
+<input type="date" name="expected_delivery" value="{{ shipment.expected_delivery if shipment else '' }}">
+</label>
+
+</div>
+
+<label>
+Remark
+<textarea name="remark">{{ shipment.remark if shipment else '' }}</textarea>
+</label>
+
+<button>Save Shipment</button>
+
+<a class="btn secondary" href="{{ url_for('admin') }}">Cancel</a>
+
+</form>
+</main>
+{% endblock %}
