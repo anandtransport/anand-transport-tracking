@@ -1,4 +1,88 @@
-{% extends "base.html" %}{% block title %}Shipment Tracking | Anand Transport{% endblock %}
-{% block content %}<section class="hero"><div class="wrap"><div class="eyebrow">ANAND TRANSPORT COMPANY</div><h1>Track your shipment<br><span>in real time.</span></h1><p>Enter your Docket / AWB number to check the latest shipment status.</p>
-<form class="track" method="post" action="{{url_for('track')}}"><input name="docket" required placeholder="Enter Docket / AWB Number"><button>Track Shipment</button></form></div></section>
-<section class="cards wrap"><article><b>📦 Safe Handling</b><p>Your cargo is handled with care.</p></article><article><b>📍 Live Status</b><p>View the latest shipment movement.</p></article><article><b>🚚 Reliable Delivery</b><p>Professional transport services.</p></article></section>{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Home | Anand Transport{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+    <div class="wrap">
+        <div class="eyebrow">ANAND TRANSPORT COMPANY</div>
+
+        <h1>
+            Reliable Transport<br>
+            <span>For Your Business.</span>
+        </h1>
+
+        <p>
+            Safe, reliable and professional transportation services
+            for your shipments across India.
+        </p>
+
+        <div class="hero-buttons">
+            <a href="#services" class="btn">Our Services</a>
+            <a href="/tracking/AT100001" class="btn secondary">
+                Track Shipment
+            </a>
+        </div>
+    </div>
+</section>
+
+<section class="cards wrap" id="services">
+
+    <article>
+        <b>📦 Safe Handling</b>
+        <p>
+            Your goods are handled carefully from pickup
+            to final delivery.
+        </p>
+    </article>
+
+    <article>
+        <b>🚚 Reliable Transport</b>
+        <p>
+            Professional transportation services designed
+            for dependable delivery.
+        </p>
+    </article>
+
+    <article>
+        <b>📍 Shipment Tracking</b>
+        <p>
+            Track your shipment status using your Docket
+            or AWB number.
+        </p>
+    </article>
+
+</section>
+
+<section class="wrap about-preview">
+
+    <div class="eyebrow">ABOUT ANAND TRANSPORT</div>
+
+    <h2>Moving Your Business Forward</h2>
+
+    <p>
+        Anand Transport Company provides dependable
+        transportation and shipment services with a focus
+        on safety, timely delivery and customer satisfaction.
+    </p>
+
+</section>
+
+<section class="wrap contact-preview">
+
+    <h2>Need Help With Your Shipment?</h2>
+
+    <p>
+        Contact Anand Transport Company for shipment
+        related assistance.
+    </p>
+
+    <p>
+        <strong>Contact Number:</strong>
+        +91 7410823003
+    </p>
+
+</section>
+
+{% endblock %}
