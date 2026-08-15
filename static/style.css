@@ -2,9 +2,13 @@
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     margin: 0;
-    background: #fff;
+    background: #ffffff;
     color: #171717;
     font-family: Arial, Helvetica, sans-serif;
 }
@@ -14,58 +18,78 @@ body {
 ========================= */
 
 header {
-    height: 78px;
+    min-height: 94px;
     background: #ffffff;
-    border-bottom: 1px solid #eeeeee;
+    border-bottom: 2px solid #f0b400;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 6%;
+    padding: 10px 3.5%;
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
 }
 
 .brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     text-decoration: none;
     color: #b40000;
 }
 
 .brand b {
-    font-size: 18px;
+    display: block;
+    font-size: 27px;
+    font-weight: 900;
 }
 
 .brand small {
     display: block;
-    color: #666;
-    margin-top: 4px;
+    color: #222;
+    margin-top: 5px;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .logo {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, #d40000, #ff3b00);
+    width: 66px;
+    height: 66px;
+    background: linear-gradient(135deg, #d40000, #ff9d00);
     color: white;
-    border-radius: 13px;
+    border: 3px solid #b40000;
+    border-radius: 12px;
     display: grid;
     place-items: center;
-    font-size: 19px;
+    font-size: 25px;
     font-weight: 900;
-    box-shadow: 0 5px 15px rgba(180, 0, 0, .25);
+    box-shadow: 0 5px 15px rgba(180,0,0,.25);
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 nav a {
-    margin-left: 22px;
-    color: #a90000;
+    padding: 13px 18px;
+    color: #151515;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 800;
+    font-size: 17px;
+    border-radius: 8px;
 }
 
 nav a:hover {
-    color: #ff9900;
+    color: #d00000;
+    background: #fff5d7;
+}
+
+nav a:last-child {
+    background: #b40000;
+    color: #fff;
 }
 
 /* =========================
@@ -73,9 +97,25 @@ nav a:hover {
 ========================= */
 
 .wrap {
-    max-width: 1180px;
+    width: 100%;
+    max-width: 1420px;
     margin: auto;
-    padding: 0 20px;
+    padding: 0 28px;
+}
+
+.eyebrow {
+    display: inline-block;
+    letter-spacing: 1px;
+    font-size: 15px;
+    font-weight: 900;
+    color: #fff;
+    background: #b40000;
+    padding: 8px 15px;
+    border-radius: 20px;
+}
+
+h2 {
+    color: #b40000;
 }
 
 /* =========================
@@ -85,155 +125,229 @@ nav a:hover {
 .hero {
     position: relative;
     overflow: hidden;
+    min-height: 390px;
+    padding: 32px 4% 42px;
+    color: #111;
+
     background:
-        linear-gradient(
-            110deg,
-            #a90000 0%,
-            #d40000 45%,
-            #ef6c00 75%,
-            #ffb000 100%
-        );
-    color: white;
-    padding: 95px 20px 115px;
-    text-align: center;
+        radial-gradient(circle at 72% 30%, rgba(255,255,255,.75), transparent 28%),
+        linear-gradient(110deg, #ffd54f 0%, #ffbd22 45%, #f68b00 100%);
 }
+
+/* Decorative road */
 
 .hero::after {
-    content: "";
+    content: "🚚";
     position: absolute;
-    left: -5%;
-    right: -5%;
-    bottom: -75px;
-    height: 130px;
-    background: white;
-    border-radius: 50% 50% 0 0;
+    right: 7%;
+    bottom: 10px;
+    font-size: 185px;
+    line-height: 1;
+    filter: drop-shadow(12px 15px 10px rgba(0,0,0,.28));
+    z-index: 1;
 }
 
-.eyebrow {
-    letter-spacing: 2px;
-    font-size: 13px;
-    font-weight: bold;
-    color: #ffd400;
+.hero .wrap {
+    position: relative;
+    z-index: 3;
 }
 
 .hero h1 {
+    max-width: 650px;
     font-size: 58px;
-    line-height: 1.05;
-    margin: 18px 0;
+    line-height: 1.02;
+    margin: 20px 0 18px;
     font-weight: 900;
+    color: #a90000;
 }
 
 .hero h1 span {
-    color: #ffd21c;
+    color: #111;
 }
 
 .hero p {
-    font-size: 18px;
-    opacity: .95;
+    max-width: 650px;
+    font-size: 19px;
+    line-height: 1.6;
+    font-weight: 600;
 }
 
 /* =========================
-   TRACK SEARCH
+   HERO BUTTONS
+========================= */
+
+.hero-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 25px;
+}
+
+.btn {
+    display: inline-block;
+    text-decoration: none;
+    background: #b40000;
+    color: #fff;
+    border: 0;
+    border-radius: 9px;
+    padding: 14px 24px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 15px rgba(140,0,0,.25);
+}
+
+.btn:hover {
+    background: #d80000;
+    transform: translateY(-2px);
+}
+
+.btn.secondary {
+    background: #ffb000;
+    color: #111;
+}
+
+.btn.secondary:hover {
+    background: #ffd000;
+}
+
+/* =========================
+   TRACKING SEARCH
 ========================= */
 
 .track {
     position: relative;
-    z-index: 2;
+    z-index: 5;
+    width: 100%;
     max-width: 720px;
-    background: white;
+    background: #fff;
     padding: 8px;
-    border-radius: 16px;
-    margin: 30px auto 12px;
+    border-radius: 14px;
+    margin: 25px 0 10px;
     display: flex;
-    box-shadow: 0 12px 35px rgba(0, 0, 0, .20);
+    box-shadow: 0 10px 28px rgba(0,0,0,.22);
 }
 
 .track input {
     flex: 1;
+    min-width: 0;
     border: 0;
     padding: 16px;
-    font-size: 16px;
-    outline: 0;
-    border-radius: 12px;
+    font-size: 17px;
+    outline: none;
+    border-radius: 10px;
     color: #222;
 }
 
 .track button,
-button,
-.btn {
-    background: linear-gradient(135deg, #ffb300, #ff8c00);
-    color: #111;
+button {
+    background: linear-gradient(135deg,#b40000,#e00000);
+    color: #fff;
     border: 0;
-    border-radius: 11px;
-    padding: 14px 22px;
+    border-radius: 10px;
+    padding: 14px 25px;
     font-weight: 900;
     cursor: pointer;
-    box-shadow: 0 5px 15px rgba(255, 170, 0, .30);
+    box-shadow: 0 5px 15px rgba(180,0,0,.25);
 }
 
 .track button:hover,
-button:hover,
-.btn:hover {
-    background: #ffd000;
-    transform: translateY(-1px);
-}
-
-.hero .track + p,
-.hero > p:last-child {
-    position: relative;
-    z-index: 2;
+button:hover {
+    background: #ff9d00;
+    color: #111;
 }
 
 /* =========================
-   CARDS
+   FEATURE CARDS
 ========================= */
 
 .cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 18px;
-    margin-top: -35px;
+    margin-top: 18px;
+    margin-bottom: 25px;
     position: relative;
-    z-index: 4;
+    z-index: 5;
 }
 
 .cards article,
 .panel {
-    background: white;
-    border: 1px solid #f1dfb0;
-    border-radius: 18px;
-    padding: 25px;
-    box-shadow: 0 10px 30px rgba(120, 0, 0, .12);
+    background: #fff;
+    border: 1px solid #eadfce;
+    border-radius: 13px;
+    padding: 23px;
+    box-shadow: 0 7px 22px rgba(80,0,0,.10);
 }
 
-.cards article:nth-child(1) {
-    border-top: 5px solid #d40000;
+.cards article {
+    min-height: 130px;
+    border-bottom: 4px solid #b40000;
+    transition: .2s;
+}
+
+.cards article:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 25px rgba(80,0,0,.15);
 }
 
 .cards article:nth-child(2) {
-    border-top: 5px solid #ffb000;
+    border-bottom-color: #ffae00;
 }
 
 .cards article:nth-child(3) {
-    border-top: 5px solid #e00000;
+    border-bottom-color: #b40000;
 }
 
-.cards h3 {
-    color: #b40000;
+.cards article b {
+    display: block;
+    font-size: 19px;
+    margin-bottom: 9px;
+    color: #222;
 }
 
 .cards p {
-    color: #666;
-    line-height: 1.6;
+    color: #555;
+    line-height: 1.55;
+    margin: 0;
 }
 
 /* =========================
-   PAGE
+   ABOUT PREVIEW
+========================= */
+
+.about-preview,
+.contact-preview {
+    margin-top: 28px;
+    margin-bottom: 28px;
+    padding: 32px;
+    border: 1px solid #eadfce;
+    border-radius: 14px;
+    background:
+        linear-gradient(135deg,#fff,#fff8e5);
+    box-shadow: 0 7px 22px rgba(80,0,0,.08);
+}
+
+.about-preview h2,
+.contact-preview h2 {
+    margin: 12px 0;
+    font-size: 30px;
+}
+
+.about-preview p,
+.contact-preview p {
+    max-width: 850px;
+    color: #555;
+    line-height: 1.7;
+    font-size: 17px;
+}
+
+/* =========================
+   PAGE / TRACKING
 ========================= */
 
 .page {
     padding-top: 45px;
     padding-bottom: 60px;
+    min-height: 500px;
 }
 
 .row {
@@ -248,23 +362,19 @@ button:hover,
     background: #e7f7e9;
     color: #16803c;
     border-radius: 30px;
-    padding: 8px 14px;
+    padding: 8px 15px;
     font-weight: bold;
 }
 
-/* =========================
-   STATS
-========================= */
-
 .stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4,1fr);
     gap: 14px;
     margin: 25px 0;
 }
 
 .stats div {
-    background: linear-gradient(135deg, #fff8df, #fff);
+    background: linear-gradient(135deg,#fff8df,#fff);
     border: 1px solid #ffe09a;
     padding: 17px;
     border-radius: 13px;
@@ -278,11 +388,11 @@ button:hover,
 }
 
 /* =========================
-   TRACKING TIMELINE
+   TIMELINE
 ========================= */
 
 .timeline {
-    border-left: 3px solid #e00000;
+    border-left: 3px solid #c90000;
     padding-left: 25px;
     margin: 25px 0;
 }
@@ -293,16 +403,16 @@ button:hover,
 }
 
 .event:before {
-    content: '';
+    content: "";
     position: absolute;
     left: -34px;
     top: 3px;
     width: 12px;
     height: 12px;
-    background: #e00000;
+    background: #c90000;
     border: 3px solid white;
     border-radius: 50%;
-    box-shadow: 0 0 0 2px #e00000;
+    box-shadow: 0 0 0 2px #c90000;
 }
 
 .event span,
@@ -337,7 +447,7 @@ button:hover,
 .panel textarea:focus {
     outline: none;
     border-color: #e00000;
-    box-shadow: 0 0 0 3px rgba(224, 0, 0, .10);
+    box-shadow: 0 0 0 3px rgba(224,0,0,.10);
 }
 
 .grid {
@@ -415,16 +525,32 @@ td {
 ========================= */
 
 footer {
-    background: linear-gradient(135deg, #a90000, #d40000);
+    background:
+        linear-gradient(135deg,#9f0000,#d40000);
     color: white;
-    padding: 28px 6%;
+    padding: 32px 5%;
     border-top: 5px solid #ffc400;
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 30px;
 }
 
 footer b {
+    color: #ffd400;
+    font-size: 17px;
+}
+
+footer p {
+    line-height: 1.6;
+    color: #fff;
+}
+
+footer a {
+    color: white;
+    text-decoration: none;
+}
+
+footer a:hover {
     color: #ffd400;
 }
 
@@ -432,30 +558,114 @@ footer b {
    MOBILE
 ========================= */
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
 
     header {
-        padding: 0 4%;
+        min-height: auto;
+        padding: 12px 4%;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    nav {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    nav a {
+        font-size: 14px;
+        padding: 9px 10px;
     }
 
     .hero {
-        padding: 65px 15px 90px;
+        min-height: 470px;
+        padding: 40px 20px 80px;
+    }
+
+    .hero::after {
+        right: 4%;
+        font-size: 110px;
     }
 
     .hero h1 {
-        font-size: 40px;
+        font-size: 43px;
+    }
+
+    .cards {
+        grid-template-columns: 1fr;
+    }
+
+    .stats {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    footer {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+
+    .brand b {
+        font-size: 20px;
+    }
+
+    .brand small {
+        font-size: 13px;
+    }
+
+    .logo {
+        width: 52px;
+        height: 52px;
+        font-size: 19px;
+    }
+
+    nav {
+        gap: 2px;
+    }
+
+    nav a {
+        font-size: 12px;
+        padding: 7px 6px;
+    }
+
+    .hero {
+        padding: 30px 16px 70px;
+        min-height: 500px;
+    }
+
+    .hero h1 {
+        font-size: 38px;
+    }
+
+    .hero p {
+        font-size: 16px;
+    }
+
+    .hero::after {
+        right: 2%;
+        bottom: 10px;
+        font-size: 80px;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+    }
+
+    .hero-buttons .btn {
+        text-align: center;
     }
 
     .track {
         display: block;
         background: transparent;
         box-shadow: none;
+        padding: 0;
     }
 
     .track input {
         width: 100%;
         margin-bottom: 8px;
-        border-radius: 10px;
         box-shadow: 0 5px 15px rgba(0,0,0,.15);
     }
 
@@ -463,7 +673,6 @@ footer b {
         width: 100%;
     }
 
-    .cards,
     .stats,
     .grid {
         grid-template-columns: 1fr;
@@ -475,16 +684,12 @@ footer b {
     }
 
     footer {
-        display: block;
+        grid-template-columns: 1fr;
         text-align: center;
     }
 
-    footer span {
-        display: block;
-        margin-top: 8px;
-    }
-
-    nav a {
-        margin-left: 8px;
+    .about-preview,
+    .contact-preview {
+        padding: 22px;
     }
 }
