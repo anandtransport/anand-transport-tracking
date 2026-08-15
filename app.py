@@ -6,6 +6,7 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+
 app = Flask(__name__)
 
 app.secret_key = os.environ.get(
@@ -257,7 +258,7 @@ def tracking(docket):
             SELECT *
             FROM tracking_events
             WHERE shipment_id=%s
-            ORDER BY event_time DESC
+            ORDER BY event_time DESC, id DESC
             """,
             (shipment["id"],)
         )
@@ -391,6 +392,21 @@ def new_shipment():
             "%Y-%m-%d %H:%M:%S"
         )
 
+        # -----------------------------------------
+        # MANUAL EVENT DATE + TIME
+        # -----------------------------------------
+
+        event_date = data.get("event_date", "").strip()
+        event_time = data.get("event_time", "").strip()
+
+        if not event_date:
+            event_date = data["booking_date"]
+
+        if not event_time:
+            event_time = "10:00"
+
+        manual_event_time = f"{event_date} {event_time}:00"
+
         con = db()
         cur = con.cursor()
 
@@ -442,9 +458,12 @@ def new_shipment():
 
             sid = cur.fetchone()["id"]
 
-            booking_event_time = (
-                f"{data['booking_date']} 10:00:00"
-            )
+            # -----------------------------------------
+            # FIRST BOOKED EVENT
+            # Uses MANUALLY ENTERED date/time
+            # -----------------------------------------
+
+            booking_event_time = manual_event_time
 
             cur.execute(
                 """
@@ -468,6 +487,7 @@ def new_shipment():
             )
 
             current_status = data["status"]
+
             current_location = data.get(
                 "location",
                 ""
@@ -478,12 +498,12 @@ def new_shipment():
                 ""
             ).strip()
 
-            if (
-                current_status != "Booked"
-                or current_location.lower()
-                != data["source"].strip().lower()
-                or current_remark
-            ):
+            # -----------------------------------------
+            # IF INITIAL STATUS IS NOT BOOKED
+            # CREATE THAT EVENT USING MANUAL DATE/TIME
+            # -----------------------------------------
+
+            if current_status != "Booked":
 
                 cur.execute(
                     """
@@ -502,7 +522,7 @@ def new_shipment():
                         current_status,
                         current_location,
                         current_remark,
-                        now
+                        manual_event_time
                     )
                 )
 
@@ -531,7 +551,8 @@ def new_shipment():
 
     return render_template(
         "shipment_form.html",
-        shipment=None
+        shipment=None,
+        latest_event=None
     )
 
 
@@ -567,116 +588,231 @@ def edit_shipment(sid):
 
         return "Not found", 404
 
-    if request.method == "POST":
+    # =========================================
+    # GET - LOAD LATEST TRACKING EVENT
+    # =========================================
 
-        data = request.form
+    if request.method == "GET":
 
-        now = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-        status = data["status"]
-
-        location = data.get(
-            "location",
-            ""
-        ).strip()
-
-        remark = data.get(
-            "remark",
-            ""
-        ).strip()
-
-        cur.execute(
-            """
-            UPDATE shipments
-            SET
-                docket=%s,
-                booking_date=%s,
-                source=%s,
-                destination=%s,
-                consignor=%s,
-                consignee=%s,
-                packages=%s,
-                weight=%s,
-                status=%s,
-                location=%s,
-                expected_delivery=%s,
-                remark=%s,
-                updated_at=%s
-            WHERE id=%s
-            """,
-            (
-                data["docket"].strip(),
-                data["booking_date"],
-                data["source"].strip(),
-                data["destination"].strip(),
-                data.get("consignor", "").strip(),
-                data.get("consignee", "").strip(),
-                int(data.get("packages") or 1),
-                data.get("weight", "").strip(),
-                status,
-                location,
-                data.get("expected_delivery", ""),
-                remark,
-                now,
-                sid
-            )
-        )
-
-        # Repair first booking event
         cur.execute(
             """
             SELECT *
             FROM tracking_events
             WHERE shipment_id=%s
-            ORDER BY event_time ASC, id ASC
+            ORDER BY event_time DESC, id DESC
             LIMIT 1
             """,
             (sid,)
         )
 
-        first_event = cur.fetchone()
+        latest_event = cur.fetchone()
 
-        if (
-            first_event
-            and first_event["status"] == "Booked"
-        ):
+        cur.close()
+        con.close()
 
-            booking_event_time = (
-                f"{data['booking_date']} 10:00:00"
+        return render_template(
+            "shipment_form.html",
+            shipment=old,
+            latest_event=latest_event
+        )
+
+    # =========================================
+    # POST
+    # =========================================
+
+    data = request.form
+
+    now = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    status = data["status"]
+
+    location = data.get(
+        "location",
+        ""
+    ).strip()
+
+    remark = data.get(
+        "remark",
+        ""
+    ).strip()
+
+    # -----------------------------------------
+    # MANUAL EVENT DATE + TIME
+    # -----------------------------------------
+
+    event_date = data.get(
+        "event_date",
+        ""
+    ).strip()
+
+    event_time = data.get(
+        "event_time",
+        ""
+    ).strip()
+
+    if not event_date:
+        event_date = data["booking_date"]
+
+    if not event_time:
+        event_time = "10:00"
+
+    manual_event_time = f"{event_date} {event_time}:00"
+
+    # =========================================
+    # UPDATE SHIPMENT
+    # =========================================
+
+    cur.execute(
+        """
+        UPDATE shipments
+        SET
+            docket=%s,
+            booking_date=%s,
+            source=%s,
+            destination=%s,
+            consignor=%s,
+            consignee=%s,
+            packages=%s,
+            weight=%s,
+            status=%s,
+            location=%s,
+            expected_delivery=%s,
+            remark=%s,
+            updated_at=%s
+        WHERE id=%s
+        """,
+        (
+            data["docket"].strip(),
+            data["booking_date"],
+            data["source"].strip(),
+            data["destination"].strip(),
+            data.get("consignor", "").strip(),
+            data.get("consignee", "").strip(),
+            int(data.get("packages") or 1),
+            data.get("weight", "").strip(),
+            status,
+            location,
+            data.get("expected_delivery", ""),
+            remark,
+            now,
+            sid
+        )
+    )
+
+    # =========================================
+    # FIND ORIGINAL BOOKED EVENT
+    # =========================================
+
+    cur.execute(
+        """
+        SELECT *
+        FROM tracking_events
+        WHERE shipment_id=%s
+          AND status='Booked'
+        ORDER BY event_time ASC, id ASC
+        LIMIT 1
+        """,
+        (sid,)
+    )
+
+    first_booked = cur.fetchone()
+
+    # =========================================
+    # BOOKED EVENT
+    # =========================================
+
+    if first_booked:
+
+        # Update original Booked event
+        # with manually entered booking date/time.
+        cur.execute(
+            """
+            UPDATE tracking_events
+            SET
+                location=%s,
+                remark=%s,
+                event_time=%s
+            WHERE id=%s
+            """,
+            (
+                data["source"].strip(),
+                "Shipment booked.",
+                manual_event_time,
+                first_booked["id"]
             )
+        )
 
-            if (
-                first_event["location"]
-                != data["source"].strip()
-                or first_event["event_time"]
-                != booking_event_time
-            ):
+        # Remove all duplicate Booked events.
+        cur.execute(
+            """
+            DELETE FROM tracking_events
+            WHERE shipment_id=%s
+              AND status='Booked'
+              AND id<>%s
+            """,
+            (
+                sid,
+                first_booked["id"]
+            )
+        )
 
-                cur.execute(
-                    """
-                    UPDATE tracking_events
-                    SET
-                        location=%s,
-                        remark=%s,
-                        event_time=%s
-                    WHERE id=%s
-                    """,
-                    (
-                        data["source"].strip(),
-                        "Shipment booked.",
-                        booking_event_time,
-                        first_event["id"]
-                    )
-                )
+    else:
 
-        # Add new history event if status/location/remark changed
-        if (
-            status != old["status"]
-            or location != old["location"]
-            or remark != old["remark"]
-        ):
+        # If Booked event doesn't exist,
+        # create exactly one.
+        cur.execute(
+            """
+            INSERT INTO tracking_events
+            (
+                shipment_id,
+                status,
+                location,
+                remark,
+                event_time
+            )
+            VALUES(%s,%s,%s,%s,%s)
+            """,
+            (
+                sid,
+                "Booked",
+                data["source"].strip(),
+                "Shipment booked.",
+                manual_event_time
+            )
+        )
+
+    # =========================================
+    # GET LATEST NON-BOOKED EVENT
+    # =========================================
+
+    cur.execute(
+        """
+        SELECT *
+        FROM tracking_events
+        WHERE shipment_id=%s
+          AND status<>'Booked'
+        ORDER BY event_time DESC, id DESC
+        LIMIT 1
+        """,
+        (sid,)
+    )
+
+    latest_non_booked = cur.fetchone()
+
+    # =========================================
+    # STATUS IS NOT BOOKED
+    # =========================================
+
+    if status != "Booked":
+
+        # -------------------------------------
+        # STATUS CHANGED
+        # Create NEW event using manual date/time
+        # -------------------------------------
+
+        if status != old["status"]:
 
             cur.execute(
                 """
@@ -695,27 +831,71 @@ def edit_shipment(sid):
                     status,
                     location,
                     remark,
-                    now
+                    manual_event_time
                 )
             )
 
-        con.commit()
+        # -------------------------------------
+        # STATUS SAME
+        # Update latest event instead of
+        # creating duplicate event.
+        # -------------------------------------
 
-        cur.close()
-        con.close()
+        elif latest_non_booked:
 
-        flash("Shipment updated.")
+            cur.execute(
+                """
+                UPDATE tracking_events
+                SET
+                    location=%s,
+                    remark=%s,
+                    event_time=%s
+                WHERE id=%s
+                """,
+                (
+                    location,
+                    remark,
+                    manual_event_time,
+                    latest_non_booked["id"]
+                )
+            )
 
-        return redirect(
-            url_for("admin")
-        )
+        # -------------------------------------
+        # No non-booked event exists
+        # -------------------------------------
+
+        else:
+
+            cur.execute(
+                """
+                INSERT INTO tracking_events
+                (
+                    shipment_id,
+                    status,
+                    location,
+                    remark,
+                    event_time
+                )
+                VALUES(%s,%s,%s,%s,%s)
+                """,
+                (
+                    sid,
+                    status,
+                    location,
+                    remark,
+                    manual_event_time
+                )
+            )
+
+    con.commit()
 
     cur.close()
     con.close()
 
-    return render_template(
-        "shipment_form.html",
-        shipment=old
+    flash("Shipment updated.")
+
+    return redirect(
+        url_for("admin")
     )
 
 
@@ -792,7 +972,7 @@ def api_track(docket):
             event_time
         FROM tracking_events
         WHERE shipment_id=%s
-        ORDER BY event_time DESC
+        ORDER BY event_time DESC, id DESC
         """,
         (s["id"],)
     )
