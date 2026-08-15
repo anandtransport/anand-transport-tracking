@@ -8,92 +8,59 @@
 
 {% if shipment %}
 
-<section class="panel tracking-card">
+<section class="tracking-card">
 
-    <div class="tracking-top">
+    <div class="tracking-header">
 
         <div>
-
-            <div class="small-label">
+            <div class="tracking-label">
                 DOCKET / AWB NUMBER
             </div>
 
-            <h2>
+            <h1 class="tracking-docket">
                 {{ shipment.docket }}
-            </h2>
+            </h1>
 
-            <div class="route">
+            <div class="tracking-route">
                 {{ shipment.source|upper }}
                 →
                 {{ shipment.destination|upper }}
             </div>
-
         </div>
 
-        <div class="status-badge">
+        <div class="tracking-status">
             {{ shipment.status }}
         </div>
 
     </div>
 
 
-    <!-- =================================================
-         SHIPMENT SUMMARY
-         ================================================= -->
-
     <div class="tracking-summary">
 
-        <div class="summary-box">
-
+        <div class="tracking-box">
             <span>Packages</span>
-
-            <strong>
-                {{ shipment.packages }}
-            </strong>
-
+            <strong>{{ shipment.packages }}</strong>
         </div>
 
-
-        <div class="summary-box">
-
+        <div class="tracking-box">
             <span>Weight</span>
-
-            <strong>
-                {{ shipment.weight or '-' }}
-            </strong>
-
+            <strong>{{ shipment.weight or '-' }}</strong>
         </div>
 
-
-        <div class="summary-box">
-
+        <div class="tracking-box">
             <span>Current Location</span>
-
-            <strong>
-                {{ shipment.location or '-' }}
-            </strong>
-
+            <strong>{{ shipment.location or '-' }}</strong>
         </div>
 
-
-        <div class="summary-box">
-
+        <div class="tracking-box">
             <span>Expected Delivery</span>
-
-            <strong>
-                {{ shipment.expected_delivery or '-' }}
-            </strong>
-
+            <strong>{{ shipment.expected_delivery or '-' }}</strong>
         </div>
 
     </div>
 
 
-    <!-- =================================================
-         CONSIGNOR / CONSIGNEE
-         ================================================= -->
-
-    <div class="party-details">
+    <div class="tracking-parties">
 
         <p>
             <strong>Consignor:</strong>
@@ -108,63 +75,47 @@
     </div>
 
 
-    <hr>
+    <div class="tracking-divider"></div>
 
 
-    <!-- =================================================
-         TRACKING HISTORY
-         ================================================= -->
-
-    <h3>
+    <h2 class="tracking-history-title">
         Shipment Tracking History
-    </h3>
+    </h2>
 
 
     {% if events %}
 
-    <div class="tracking-history">
+    <div class="shipment-timeline">
 
         {% for event in events %}
 
-        <div class="tracking-event">
+        <div class="timeline-item">
 
-            <div class="event-dot"></div>
+            <div class="timeline-dot"></div>
 
-            <div class="event-content">
+            <div class="timeline-content">
 
-                <div class="event-status">
+                <div class="timeline-status">
                     {{ event.status }}
                 </div>
 
-
                 {% if event.location %}
 
-                <div class="event-location">
-
-                    <span class="pin">
-                        📍
-                    </span>
-
+                <div class="timeline-location">
+                    <span>📍</span>
                     {{ event.location }}
-
                 </div>
 
                 {% endif %}
 
-
-                <div class="event-time">
-
+                <div class="timeline-date">
                     {{ event.event_time }}
-
                 </div>
-
 
                 {% if event.remark %}
 
-                <div class="event-remark">
-
+                <div class="timeline-remark">
                     {{ event.remark }}
-
                 </div>
 
                 {% endif %}
@@ -179,9 +130,7 @@
 
     {% else %}
 
-    <p>
-        No tracking history available.
-    </p>
+    <p>No tracking history available.</p>
 
     {% endif %}
 
@@ -189,11 +138,9 @@
 
 {% else %}
 
-<section class="panel">
+<section class="tracking-card">
 
-    <h2>
-        Shipment Not Found
-    </h2>
+    <h2>Shipment Not Found</h2>
 
     <p>
         No shipment was found for docket/AWB:
