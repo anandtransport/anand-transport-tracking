@@ -27,7 +27,6 @@
 
     </a>
 
-
     <nav>
 
         <a href="{{ url_for('home') }}">
@@ -88,7 +87,6 @@
 <footer id="contact">
 
     <div>
-
         <b>Anand Transport Company</b>
 
         <p>
@@ -100,24 +98,44 @@
             Opposite Mishreelal Girls College<br>
             Dedansar Road, Jaisalmer
         </p>
-
     </div>
 
 
     <div>
-
         <b>Contact Us</b>
 
         <p>
-            Contact Number:<br>
+            📞 Contact Number:<br>
             <strong>+91 7410823003</strong>
         </p>
 
+        <p>
+            ✉️ Email:<br>
+            <a href="mailto:anandtransportjsm@gmail.com">
+                anandtransportjsm@gmail.com
+            </a>
+        </p>
     </div>
 
 
     <div>
+        <b>Online Tracking</b>
 
+        <p>
+            Track your shipment online:
+        </p>
+
+        <p>
+            <a href="https://anand-transport-tracking-3.onrender.com"
+               target="_blank"
+               rel="noopener noreferrer">
+                📦 Track Your Shipment
+            </a>
+        </p>
+    </div>
+
+
+    <div>
         <b>Quick Links</b>
 
         <p>
@@ -133,20 +151,18 @@
         </p>
 
         <p>
-            Track Shipment
+            <a href="{{ url_for('tracking', docket='') }}">
+                Track Shipment
+            </a>
         </p>
 
-    </div>
-
-
-    <div>
-
-        <b>© 2026 Anand Transport Company</b>
+        <p>
+            © 2026 Anand Transport Company
+        </p>
 
         <p>
             All rights reserved.
         </p>
-
     </div>
 
 </footer>
