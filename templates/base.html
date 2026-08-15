@@ -8,5 +8,23 @@
 <nav>{% if session.get('admin_id') %}<a href="{{ url_for('admin') }}">Admin Panel</a><a href="{{ url_for('logout') }}">Logout</a>{% else %}<a href="{{ url_for('admin_login') }}">Admin Login</a>{% endif %}</nav></header>
 {% with messages=get_flashed_messages() %}{% if messages %}<div class="flash">{% for m in messages %}{{m}}{% endfor %}</div>{% endif %}{% endwith %}
 {% block content %}{% endblock %}
-<footer><b>Anand Transport Company</b><span>© 2026 All rights reserved.</span></footer>
+<footer>
+    <div>
+        <b>Anand Transport Company</b>
+        <div>Opposite Mishreelal Girls College</div>
+        <div>Dedansar Road, Jaisalmer</div>
+    </div>
+
+    <div>
+        <b>Branch Address</b>
+        <div>Anand Transport Company</div>
+        <div>Opposite Mishreelal Girls College</div>
+        <div>Dedansar Road, Jaisalmer</div>
+    </div>
+
+    <div>
+        <b>© 2026 Anand Transport Company</b>
+        <div>All rights reserved.</div>
+    </div>
+</footer>
 </body></html>
