@@ -1,158 +1,206 @@
 {% extends "base.html" %}
 
-{% block title %}Track Shipment | Anand Transport{% endblock %}
+{% block title %}Track Shipment{% endblock %}
 
 {% block content %}
 
-<section class="tracking-hero">
-    <div class="wrap">
-        <div class="eyebrow">ANAND TRANSPORT COMPANY</div>
-
-        <h1>Track Your Shipment</h1>
-
-        <p>
-            Enter your Docket / AWB number to view the latest
-            shipment status and movement history.
-        </p>
-
-        <form class="track" method="post" action="{{ url_for('track') }}">
-            <input
-                name="docket"
-                required
-                placeholder="Enter Docket / AWB Number"
-                value="{{ docket or '' }}"
-            >
-            <button type="submit">Track Shipment</button>
-        </form>
-    </div>
-</section>
-
-
 <main class="wrap page">
 
-{% if not shipment %}
+{% if shipment %}
 
-    <div class="panel not-found">
+<section class="panel tracking-card">
 
-        <div class="not-found-icon">📦</div>
+    <div class="tracking-top">
 
-        <h2>Shipment Not Found</h2>
+        <div>
 
-        <p>
-            We couldn't find a shipment with this
-            Docket / AWB number.
-        </p>
+            <div class="small-label">
+                DOCKET / AWB NUMBER
+            </div>
 
-        <a class="btn" href="{{ url_for('home') }}">
-            Back to Home
-        </a>
+            <h2>
+                {{ shipment.docket }}
+            </h2>
+
+            <div class="route">
+                {{ shipment.source|upper }}
+                →
+                {{ shipment.destination|upper }}
+            </div>
+
+        </div>
+
+        <div class="status-badge">
+            {{ shipment.status }}
+        </div>
 
     </div>
+
+
+    <!-- =================================================
+         SHIPMENT SUMMARY
+         ================================================= -->
+
+    <div class="tracking-summary">
+
+        <div class="summary-box">
+
+            <span>Packages</span>
+
+            <strong>
+                {{ shipment.packages }}
+            </strong>
+
+        </div>
+
+
+        <div class="summary-box">
+
+            <span>Weight</span>
+
+            <strong>
+                {{ shipment.weight or '-' }}
+            </strong>
+
+        </div>
+
+
+        <div class="summary-box">
+
+            <span>Current Location</span>
+
+            <strong>
+                {{ shipment.location or '-' }}
+            </strong>
+
+        </div>
+
+
+        <div class="summary-box">
+
+            <span>Expected Delivery</span>
+
+            <strong>
+                {{ shipment.expected_delivery or '-' }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         CONSIGNOR / CONSIGNEE
+         ================================================= -->
+
+    <div class="party-details">
+
+        <p>
+            <strong>Consignor:</strong>
+            {{ shipment.consignor or '-' }}
+        </p>
+
+        <p>
+            <strong>Consignee:</strong>
+            {{ shipment.consignee or '-' }}
+        </p>
+
+    </div>
+
+
+    <hr>
+
+
+    <!-- =================================================
+         TRACKING HISTORY
+         ================================================= -->
+
+    <h3>
+        Shipment Tracking History
+    </h3>
+
+
+    {% if events %}
+
+    <div class="tracking-history">
+
+        {% for event in events %}
+
+        <div class="tracking-event">
+
+            <div class="event-dot"></div>
+
+            <div class="event-content">
+
+                <div class="event-status">
+                    {{ event.status }}
+                </div>
+
+
+                {% if event.location %}
+
+                <div class="event-location">
+
+                    <span class="pin">
+                        📍
+                    </span>
+
+                    {{ event.location }}
+
+                </div>
+
+                {% endif %}
+
+
+                <div class="event-time">
+
+                    {{ event.event_time }}
+
+                </div>
+
+
+                {% if event.remark %}
+
+                <div class="event-remark">
+
+                    {{ event.remark }}
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    {% else %}
+
+    <p>
+        No tracking history available.
+    </p>
+
+    {% endif %}
+
+</section>
 
 {% else %}
 
-    <div class="panel tracking-card">
+<section class="panel">
 
-        <div class="row">
+    <h2>
+        Shipment Not Found
+    </h2>
 
-            <div>
-                <small>DOCKET / AWB NUMBER</small>
+    <p>
+        No shipment was found for docket/AWB:
+        <strong>{{ docket }}</strong>
+    </p>
 
-                <h2>{{ shipment.docket }}</h2>
-
-                <h3>
-                    {{ shipment.source }}
-                    →
-                    {{ shipment.destination }}
-                </h3>
-            </div>
-
-            <span class="pill">
-                {{ shipment.status }}
-            </span>
-
-        </div>
-
-
-        <div class="stats">
-
-            <div>
-                <small>Packages</small>
-                <b>{{ shipment.packages }}</b>
-            </div>
-
-            <div>
-                <small>Weight</small>
-                <b>{{ shipment.weight or '-' }}</b>
-            </div>
-
-            <div>
-                <small>Current Location</small>
-                <b>{{ shipment.location or '-' }}</b>
-            </div>
-
-            <div>
-                <small>Expected Delivery</small>
-                <b>{{ shipment.expected_delivery or '-' }}</b>
-            </div>
-
-        </div>
-
-
-        <div class="shipment-info">
-
-            <p>
-                <strong>Consignor:</strong>
-                {{ shipment.consignor or '-' }}
-            </p>
-
-            <p>
-                <strong>Consignee:</strong>
-                {{ shipment.consignee or '-' }}
-            </p>
-
-            {% if shipment.remark %}
-            <p>
-                <strong>Latest Remark:</strong>
-                {{ shipment.remark }}
-            </p>
-            {% endif %}
-
-        </div>
-
-
-        <hr>
-
-
-        <h3>Shipment Tracking History</h3>
-
-        <div class="timeline">
-
-            {% for e in events %}
-
-            <div class="event">
-
-                <b>{{ e.status }}</b>
-
-                {% if e.location %}
-                <span>📍 {{ e.location }}</span>
-                {% endif %}
-
-                <small>
-                    {{ e.event_time }}
-                </small>
-
-                {% if e.remark %}
-                <p>{{ e.remark }}</p>
-                {% endif %}
-
-            </div>
-
-            {% endfor %}
-
-        </div>
-
-    </div>
+</section>
 
 {% endif %}
 
