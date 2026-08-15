@@ -5,52 +5,382 @@
 {% block content %}
 
 <!-- =========================
-     HERO
+     HERO SECTION
 ========================= -->
 
-<section class="hero">
+<section class="home-hero">
 
-    <div class="wrap">
+    <div class="hero-overlay"></div>
 
-        <div class="eyebrow">
-            ANAND TRANSPORT COMPANY • SINCE 1990
+    <div class="wrap hero-content">
+
+        <div class="since-badge">
+            ★ SINCE 1990
+        </div>
+
+        <div class="trusted-text">
+            Jaisalmer's Trusted Transport Service
         </div>
 
         <h1>
-            Jaisalmer's Trusted<br>
-            <span>Transport Partner.</span>
+            Delivering Trust,
+            <br>
+            <span>Every Mile.</span>
         </h1>
 
-        <p>
+        <p class="hero-description">
             Reliable transport and shipment services from Jaisalmer
             to destinations across India.
         </p>
 
-        <form class="track"
+        <div class="hero-points">
+
+            <div>
+                <span>✓</span>
+                Jaisalmer's trusted transport service since 1990
+            </div>
+
+            <div>
+                <span>✓</span>
+                Safe, reliable & on-time delivery across India
+            </div>
+
+            <div>
+                <span>✓</span>
+                Daily local services • Jodhpur to Jaisalmer & more
+            </div>
+
+        </div>
+
+
+        <!-- TRACKING BOX -->
+
+        <form class="hero-track"
               method="post"
               action="{{ url_for('track') }}">
 
+            <div class="track-icon">
+                📦
+            </div>
+
             <input
+                type="text"
                 name="docket"
                 required
-                placeholder="Enter Docket / AWB Number">
+                placeholder="Enter Docket / AWB Number"
+            >
 
             <button type="submit">
-                Track Shipment
+                🔍 Track Now
             </button>
 
         </form>
 
-        <div class="hero-buttons">
+    </div>
 
-            <a href="#services" class="btn">
-                Our Services
+
+    <!-- TRUCK -->
+
+    <div class="hero-truck">
+
+        <div class="truck-body">
+
+            <div class="truck-cabin">
+
+                <div class="truck-window"></div>
+
+                <div class="truck-front">
+                    ATC
+                </div>
+
+                <div class="truck-light"></div>
+
+            </div>
+
+            <div class="truck-container">
+
+                <div class="truck-logo">
+                    ATC
+                </div>
+
+                <div class="truck-company">
+                    ANAND TRANSPORT COMPANY
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="truck-wheel wheel-one"></div>
+        <div class="truck-wheel wheel-two"></div>
+
+    </div>
+
+
+    <!-- DESTINATION SIGN -->
+
+    <div class="destination-sign">
+
+        <strong>JODHPUR</strong>
+
+        <span>↕</span>
+
+        <strong>JAISALMER</strong>
+
+        <small>DAILY SERVICE</small>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     SERVICE CARDS
+========================= -->
+
+<section class="feature-section">
+
+    <div class="wrap feature-grid">
+
+        <article class="feature-card red-card">
+
+            <div class="feature-icon">
+                🚚
+            </div>
+
+            <div>
+                <h3>Fast & Reliable Delivery</h3>
+
+                <p>
+                    Timely delivery with our well-connected
+                    transport network.
+                </p>
+            </div>
+
+        </article>
+
+
+        <article class="feature-card yellow-card">
+
+            <div class="feature-icon shield">
+                ✓
+            </div>
+
+            <div>
+                <h3>Safe & Secure Handling</h3>
+
+                <p>
+                    Your goods are handled with extra care
+                    and safety.
+                </p>
+            </div>
+
+        </article>
+
+
+        <article class="feature-card red-card">
+
+            <div class="feature-icon">
+                📍
+            </div>
+
+            <div>
+                <h3>Real-time Tracking</h3>
+
+                <p>
+                    Track your shipment anytime, anywhere
+                    with ease.
+                </p>
+            </div>
+
+        </article>
+
+
+        <article class="feature-card yellow-card">
+
+            <div class="feature-icon">
+                ☎
+            </div>
+
+            <div>
+                <h3>Customer Support</h3>
+
+                <p>
+                    Our support team is always ready to
+                    help you.
+                </p>
+            </div>
+
+        </article>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     INFORMATION SECTION
+========================= -->
+
+<section class="info-section">
+
+    <div class="wrap info-grid">
+
+
+        <!-- ABOUT -->
+
+        <article class="info-card about-card">
+
+            <div class="info-title">
+                About Anand Transport Company
+            </div>
+
+            <div class="title-line"></div>
+
+            <div class="experience-badge">
+
+                <span>SINCE</span>
+                <strong>1990</strong>
+
+            </div>
+
+            <p>
+                Anand Transport Company has been serving
+                customers with trust and dedication since 1990.
+            </p>
+
+            <p>
+                We are one of Jaisalmer's trusted transport
+                services, providing safe, reliable and
+                affordable transportation solutions.
+            </p>
+
+            <p>
+                Our goal is simple – to deliver your trust,
+                on time, every time.
+            </p>
+
+            <a href="{{ url_for('about') }}" class="info-button">
+                Know More About Us →
             </a>
 
-            <a href="{{ url_for('about') }}" class="btn secondary">
-                About Us
-            </a>
+        </article>
 
+
+        <!-- DAILY SERVICES -->
+
+        <article class="info-card services-card">
+
+            <div class="info-title">
+                Our Daily Local Services
+            </div>
+
+            <div class="title-line"></div>
+
+            <p>
+                We provide daily transport services from
+                Jodhpur to the following destinations:
+            </p>
+
+            <ul class="route-list">
+
+                <li>
+                    <span>📍</span>
+                    Jodhpur to Jaisalmer
+                    <b>(Daily)</b>
+                </li>
+
+                <li>
+                    <span>📍</span>
+                    Jodhpur to Barmer
+                    <b>(Daily)</b>
+                </li>
+
+                <li>
+                    <span>📍</span>
+                    Jodhpur to Pokaran
+                    <b>(Daily)</b>
+                </li>
+
+                <li>
+                    <span>📍</span>
+                    Jodhpur to Ramdevra
+                    <b>(Daily)</b>
+                </li>
+
+                <li>
+                    <span>📍</span>
+                    Jodhpur to Phalodi
+                    <b>(Daily)</b>
+                </li>
+
+            </ul>
+
+        </article>
+
+
+        <!-- ALL INDIA -->
+
+        <article class="info-card india-card">
+
+            <div class="info-title">
+                We Serve All Over India
+            </div>
+
+            <div class="title-line"></div>
+
+            <p>
+                From small packages to bulk consignments,
+                we deliver your goods safely to destinations
+                across India.
+            </p>
+
+            <div class="india-map">
+
+                <div class="india-shape">
+                    INDIA
+                </div>
+
+                <div class="route-dot dot-1"></div>
+                <div class="route-dot dot-2"></div>
+                <div class="route-dot dot-3"></div>
+                <div class="route-dot dot-4"></div>
+
+            </div>
+
+        </article>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     TRUST STRIP
+========================= -->
+
+<section class="trust-strip">
+
+    <div class="wrap trust-grid">
+
+        <div>
+            <strong>30+</strong>
+            <span>Years of Trust</span>
+        </div>
+
+        <div>
+            <strong>🚚</strong>
+            <span>Daily Local Services</span>
+        </div>
+
+        <div>
+            <strong>🇮🇳</strong>
+            <span>All Over India</span>
+        </div>
+
+        <div>
+            <strong>🛡</strong>
+            <span>Safe & Secure</span>
         </div>
 
     </div>
@@ -59,239 +389,46 @@
 
 
 <!-- =========================
-     COMPANY HIGHLIGHTS
+     CONTACT SECTION
 ========================= -->
 
-<section class="cards wrap" id="services">
+<section class="home-contact">
 
-    <article>
+    <div class="wrap contact-box">
 
-        <div style="font-size:42px;">🚛</div>
+        <div>
 
-        <b>Daily Local Service</b>
+            <div class="eyebrow dark">
+                ANAND TRANSPORT COMPANY
+            </div>
 
-        <p>
-            Regular transport service from
-            Jodhpur to Jaisalmer, Barmer,
-            Pokaran, Ramdevra and Phalodi.
-        </p>
-
-    </article>
-
-
-    <article>
-
-        <div style="font-size:42px;">🇮🇳</div>
-
-        <b>All India Service</b>
-
-        <p>
-            We provide dependable transportation
-            services connecting Jaisalmer with
-            destinations across India.
-        </p>
-
-    </article>
-
-
-    <article>
-
-        <div style="font-size:42px;">📦</div>
-
-        <b>Safe & Reliable Delivery</b>
-
-        <p>
-            Your shipments are handled with care
-            and transported with a focus on
-            safety and timely delivery.
-        </p>
-
-    </article>
-
-</section>
-
-
-<!-- =========================
-     EXPERIENCE
-========================= -->
-
-<section class="wrap about-preview">
-
-    <div class="eyebrow">
-        OUR EXPERIENCE
-    </div>
-
-    <h2>
-        Serving Jaisalmer Since 1990
-    </h2>
-
-    <p>
-        Anand Transport Company is one of the longstanding
-        transport services in Jaisalmer. Since 1990, we have
-        been serving customers with dependable transportation
-        solutions and building trust through reliable service.
-    </p>
-
-    <p>
-        From local daily routes to destinations across India,
-        our aim is to provide safe, professional and dependable
-        transportation for every shipment.
-    </p>
-
-    <a href="{{ url_for('about') }}" class="btn">
-        Know More About Us
-    </a>
-
-</section>
-
-
-<!-- =========================
-     DAILY ROUTES
-========================= -->
-
-<section class="wrap contact-preview">
-
-    <div class="eyebrow">
-        DAILY LOCAL SERVICES
-    </div>
-
-    <h2>
-        Our Regular Routes
-    </h2>
-
-    <p>
-        🚛 <strong>Jodhpur → Jaisalmer</strong>
-        — Daily Service
-    </p>
-
-    <p>
-        🚛 <strong>Jaisalmer → Barmer</strong>
-        — Daily Service
-    </p>
-
-    <p>
-        🚛 <strong>Jaisalmer → Pokaran / Ramdevra</strong>
-        — Daily Service
-    </p>
-
-    <p>
-        🚛 <strong>Jaisalmer → Phalodi</strong>
-        — Daily Service
-    </p>
-
-    <p>
-        🇮🇳 <strong>All India Transport Service</strong>
-    </p>
-
-</section>
-
-
-<!-- =========================
-     WHY CHOOSE US
-========================= -->
-
-<section class="wrap about-preview">
-
-    <div class="eyebrow">
-        WHY CHOOSE ANAND TRANSPORT
-    </div>
-
-    <h2>
-        Trusted Service. Reliable Delivery.
-    </h2>
-
-    <p>
-        With decades of experience in transportation,
-        Anand Transport Company focuses on dependable
-        service, safe shipment movement and customer
-        satisfaction.
-    </p>
-
-    <div class="cards" style="margin-top:30px;">
-
-        <article>
-
-            <div style="font-size:38px;">🏆</div>
-
-            <b>Since 1990</b>
+            <h2>
+                Need help with your shipment?
+            </h2>
 
             <p>
-                Decades of transportation experience
-                and customer trust.
+                Our team is ready to assist you with your
+                transport and shipment requirements.
             </p>
 
-        </article>
+        </div>
 
+        <div class="contact-details">
 
-        <article>
+            <div>
+                <span>☎</span>
+                <strong>+91 7410823003</strong>
+            </div>
 
-            <div style="font-size:38px;">🛣️</div>
+            <div>
+                <span>✉</span>
+                <strong>anandtransportjsm@gmail.com</strong>
+            </div>
 
-            <b>Daily Connectivity</b>
-
-            <p>
-                Regular local routes connecting
-                Jaisalmer with nearby cities.
-            </p>
-
-        </article>
-
-
-        <article>
-
-            <div style="font-size:38px;">🤝</div>
-
-            <b>Customer First</b>
-
-            <p>
-                Professional service with a focus
-                on reliability and customer satisfaction.
-            </p>
-
-        </article>
+        </div>
 
     </div>
 
 </section>
-
-
-<!-- =========================
-     CONTACT
-========================= -->
-
-<section class="wrap contact-preview">
-
-    <div class="eyebrow">
-        GET IN TOUCH
-    </div>
-
-    <h2>
-        Need Transport Assistance?
-    </h2>
-
-    <p>
-        Contact Anand Transport Company for
-        shipment and transportation related assistance.
-    </p>
-
-    <p>
-        📞 <strong>+91 7410823003</strong>
-    </p>
-
-    <p>
-        ✉️
-        <strong>anandtransportjsm@gmail.com</strong>
-    </p>
-
-    <p>
-        📍
-        <strong>
-            Opposite Mishreelal Girls College,
-            Dedansar Road, Jaisalmer
-        </strong>
-    </p>
-
-</section>
-
 
 {% endblock %}
