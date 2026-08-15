@@ -10,9 +10,152 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        /* =========================================
+           ATC PAGE LOADER
+           ========================================= */
+
+        #atc-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            background: #ffffff;
+
+            opacity: 1;
+            visibility: visible;
+
+            transition:
+                opacity .35s ease,
+                visibility .35s ease;
+        }
+
+        #atc-loader.hide {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .atc-loader-box {
+            text-align: center;
+        }
+
+        .atc-loader-logo {
+            width: 70px;
+            height: 70px;
+
+            margin: 0 auto 14px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 12px;
+
+            background: #c00000;
+            color: #ffffff;
+
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 1px;
+
+            box-shadow:
+                0 8px 25px rgba(192, 0, 0, .20);
+        }
+
+        .atc-loader-title {
+            margin-bottom: 5px;
+
+            color: #a90000;
+
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .atc-loader-subtitle {
+            color: #777;
+
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .atc-loader-line {
+            width: 130px;
+            height: 3px;
+
+            margin: 17px auto 0;
+
+            overflow: hidden;
+
+            border-radius: 10px;
+
+            background: #eeeeee;
+        }
+
+        .atc-loader-line::after {
+            content: "";
+
+            display: block;
+
+            width: 45%;
+            height: 100%;
+
+            border-radius: 10px;
+
+            background: #c00000;
+
+            animation: atc-loading 1s infinite ease-in-out;
+        }
+
+        @keyframes atc-loading {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            50% {
+                transform: translateX(120%);
+            }
+
+            100% {
+                transform: translateX(280%);
+            }
+        }
+    </style>
 </head>
 
 <body>
+
+<!-- =========================================
+     ATC LOADING SCREEN
+     ========================================= -->
+
+<div id="atc-loader">
+
+    <div class="atc-loader-box">
+
+        <div class="atc-loader-logo">
+            ATC
+        </div>
+
+        <div class="atc-loader-title">
+            Anand Transport Company
+        </div>
+
+        <div class="atc-loader-subtitle">
+            Reliable • Fast • Nationwide
+        </div>
+
+        <div class="atc-loader-line"></div>
+
+    </div>
+
+</div>
+
 
 <header>
 
@@ -166,6 +309,23 @@
     </div>
 
 </footer>
+
+
+<script>
+    /*
+     * Hide loader when the page is completely loaded.
+     */
+
+    window.addEventListener("load", function () {
+
+        const loader = document.getElementById("atc-loader");
+
+        if (loader) {
+            loader.classList.add("hide");
+        }
+
+    });
+</script>
 
 </body>
 </html>
