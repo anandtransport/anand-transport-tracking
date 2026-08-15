@@ -13,683 +13,1464 @@ body {
     font-family: Arial, Helvetica, sans-serif;
 }
 
-/* =========================
+a {
+    text-decoration: none;
+}
+
+.wrap {
+    width: 100%;
+    max-width: 1450px;
+    margin: auto;
+    padding-left: 35px;
+    padding-right: 35px;
+}
+
+
+/* ==================================================
    HEADER
-========================= */
+================================================== */
 
 header {
-    min-height: 94px;
+    height: 94px;
     background: #ffffff;
     border-bottom: 2px solid #f0b400;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 3.5%;
+
+    padding: 0 3%;
+
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 2px 12px rgba(0,0,0,.08);
 }
 
 .brand {
     display: flex;
     align-items: center;
-    gap: 14px;
-    text-decoration: none;
+    gap: 15px;
+
     color: #b40000;
+}
+
+.brand .logo {
+    width: 62px;
+    height: 62px;
+
+    display: grid;
+    place-items: center;
+
+    background: linear-gradient(
+        135deg,
+        #d90000,
+        #ffb000
+    );
+
+    border: 3px solid #b40000;
+    border-radius: 12px;
+
+    color: white;
+    font-size: 24px;
+    font-weight: 900;
+
+    box-shadow:
+        0 4px 12px rgba(150, 0, 0, .25);
 }
 
 .brand b {
     display: block;
-    font-size: 27px;
-    font-weight: 900;
+    font-size: 25px;
+    line-height: 1.1;
 }
 
 .brand small {
     display: block;
-    color: #222;
+    color: #333;
     margin-top: 5px;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
-}
-
-.logo {
-    width: 66px;
-    height: 66px;
-    background: linear-gradient(135deg, #d40000, #ff9d00);
-    color: white;
-    border: 3px solid #b40000;
-    border-radius: 12px;
-    display: grid;
-    place-items: center;
-    font-size: 25px;
-    font-weight: 900;
-    box-shadow: 0 5px 15px rgba(180,0,0,.25);
 }
 
 nav {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 36px;
 }
 
 nav a {
-    padding: 13px 18px;
     color: #151515;
-    text-decoration: none;
+    font-size: 17px;
     font-weight: 800;
-    font-size: 17px;
-    border-radius: 8px;
-}
-
-nav a:hover {
-    color: #d00000;
-    background: #fff5d7;
-}
-
-nav a:last-child {
-    background: #b40000;
-    color: #fff;
-}
-
-/* =========================
-   COMMON
-========================= */
-
-.wrap {
-    width: 100%;
-    max-width: 1420px;
-    margin: auto;
-    padding: 0 28px;
-}
-
-.eyebrow {
-    display: inline-block;
-    letter-spacing: 1px;
-    font-size: 15px;
-    font-weight: 900;
-    color: #fff;
-    background: #b40000;
-    padding: 8px 15px;
-    border-radius: 20px;
-}
-
-h2 {
-    color: #b40000;
-}
-
-/* =========================
-   HERO
-========================= */
-
-.hero {
-    position: relative;
-    overflow: hidden;
-    min-height: 390px;
-    padding: 32px 4% 42px;
-    color: #111;
-
-    background:
-        radial-gradient(circle at 72% 30%, rgba(255,255,255,.75), transparent 28%),
-        linear-gradient(110deg, #ffd54f 0%, #ffbd22 45%, #f68b00 100%);
-}
-
-/* Decorative road */
-
-.hero::after {
-    content: "🚚";
-    position: absolute;
-    right: 7%;
-    bottom: 10px;
-    font-size: 185px;
-    line-height: 1;
-    filter: drop-shadow(12px 15px 10px rgba(0,0,0,.28));
-    z-index: 1;
-}
-
-.hero .wrap {
-    position: relative;
-    z-index: 3;
-}
-
-.hero h1 {
-    max-width: 650px;
-    font-size: 58px;
-    line-height: 1.02;
-    margin: 20px 0 18px;
-    font-weight: 900;
-    color: #a90000;
-}
-
-.hero h1 span {
-    color: #111;
-}
-
-.hero p {
-    max-width: 650px;
-    font-size: 19px;
-    line-height: 1.6;
-    font-weight: 600;
-}
-
-/* =========================
-   HERO BUTTONS
-========================= */
-
-.hero-buttons {
-    display: flex;
-    gap: 12px;
-    margin-top: 25px;
-}
-
-.btn {
-    display: inline-block;
-    text-decoration: none;
-    background: #b40000;
-    color: #fff;
-    border: 0;
-    border-radius: 9px;
-    padding: 14px 24px;
-    font-weight: 900;
-    cursor: pointer;
-    box-shadow: 0 6px 15px rgba(140,0,0,.25);
-}
-
-.btn:hover {
-    background: #d80000;
-    transform: translateY(-2px);
-}
-
-.btn.secondary {
-    background: #ffb000;
-    color: #111;
-}
-
-.btn.secondary:hover {
-    background: #ffd000;
-}
-
-/* =========================
-   TRACKING SEARCH
-========================= */
-
-.track {
-    position: relative;
-    z-index: 5;
-    width: 100%;
-    max-width: 720px;
-    background: #fff;
-    padding: 8px;
-    border-radius: 14px;
-    margin: 25px 0 10px;
-    display: flex;
-    box-shadow: 0 10px 28px rgba(0,0,0,.22);
-}
-
-.track input {
-    flex: 1;
-    min-width: 0;
-    border: 0;
-    padding: 16px;
-    font-size: 17px;
-    outline: none;
-    border-radius: 10px;
-    color: #222;
-}
-
-.track button,
-button {
-    background: linear-gradient(135deg,#b40000,#e00000);
-    color: #fff;
-    border: 0;
-    border-radius: 10px;
-    padding: 14px 25px;
-    font-weight: 900;
-    cursor: pointer;
-    box-shadow: 0 5px 15px rgba(180,0,0,.25);
-}
-
-.track button:hover,
-button:hover {
-    background: #ff9d00;
-    color: #111;
-}
-
-/* =========================
-   FEATURE CARDS
-========================= */
-
-.cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-    margin-top: 18px;
-    margin-bottom: 25px;
-    position: relative;
-    z-index: 5;
-}
-
-.cards article,
-.panel {
-    background: #fff;
-    border: 1px solid #eadfce;
-    border-radius: 13px;
-    padding: 23px;
-    box-shadow: 0 7px 22px rgba(80,0,0,.10);
-}
-
-.cards article {
-    min-height: 130px;
-    border-bottom: 4px solid #b40000;
     transition: .2s;
 }
 
-.cards article:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 25px rgba(80,0,0,.15);
+nav a:hover {
+    color: #c40000;
 }
 
-.cards article:nth-child(2) {
-    border-bottom-color: #ffae00;
+
+/* ==================================================
+   HERO
+================================================== */
+
+.home-hero {
+    min-height: 560px;
+
+    position: relative;
+    overflow: hidden;
+
+    background:
+        radial-gradient(
+            circle at 70% 50%,
+            rgba(255,255,255,.75),
+            transparent 30%
+        ),
+        linear-gradient(
+            110deg,
+            #ffd84d 0%,
+            #ffc229 45%,
+            #ffad17 72%,
+            #ff8c00 100%
+        );
+
+    border-bottom: 1px solid #e4a300;
 }
 
-.cards article:nth-child(3) {
-    border-bottom-color: #b40000;
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,.20),
+            transparent 50%,
+            rgba(255,150,0,.10)
+        );
 }
 
-.cards article b {
-    display: block;
+.hero-content {
+    position: relative;
+    z-index: 5;
+
+    padding-top: 48px;
+    padding-bottom: 65px;
+}
+
+.since-badge {
+    display: inline-block;
+
+    background: #b90000;
+    color: #ffffff;
+
+    border-radius: 30px;
+
+    padding: 10px 20px;
+
+    font-size: 15px;
+    font-weight: 900;
+
+    letter-spacing: .8px;
+
+    box-shadow:
+        0 5px 15px rgba(150,0,0,.22);
+}
+
+.trusted-text {
+    display: inline-block;
+
+    margin-left: 10px;
+
+    color: #a40000;
+
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.home-hero h1 {
+    position: relative;
+
+    max-width: 650px;
+
+    margin: 20px 0 12px;
+
+    font-size: 62px;
+    line-height: .98;
+
+    color: #a90000;
+
+    font-weight: 950;
+
+    letter-spacing: -2px;
+}
+
+.home-hero h1 span {
+    color: #111111;
+}
+
+.hero-description {
+    max-width: 590px;
+
+    margin: 18px 0;
+
     font-size: 19px;
-    margin-bottom: 9px;
+    line-height: 1.55;
+
+    color: #181818;
+    font-weight: 600;
+}
+
+.hero-points {
+    margin-top: 20px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.hero-points div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hero-points span {
+    width: 22px;
+    height: 22px;
+
+    display: grid;
+    place-items: center;
+
+    background: #b80000;
+    color: white;
+
+    border-radius: 50%;
+
+    font-size: 13px;
+}
+
+
+/* ==================================================
+   TRACKING BOX
+================================================== */
+
+.hero-track {
+    position: relative;
+    z-index: 10;
+
+    width: 100%;
+    max-width: 650px;
+
+    margin-top: 25px;
+
+    background: white;
+
+    border-radius: 15px;
+
+    padding: 7px;
+
+    display: flex;
+    align-items: center;
+
+    box-shadow:
+        0 12px 28px rgba(80, 40, 0, .22);
+}
+
+.track-icon {
+    width: 48px;
+    height: 48px;
+
+    display: grid;
+    place-items: center;
+
+    background: #f1f1f1;
+
+    border-radius: 10px;
+
+    font-size: 22px;
+
+    margin-left: 2px;
+}
+
+.hero-track input {
+    flex: 1;
+
+    min-width: 0;
+
+    border: 0;
+    outline: 0;
+
+    padding: 16px;
+
+    font-size: 16px;
+
     color: #222;
 }
 
-.cards p {
-    color: #555;
-    line-height: 1.55;
-    margin: 0;
+.hero-track button {
+    border: 0;
+
+    background: #c50000;
+    color: white;
+
+    border-radius: 10px;
+
+    padding: 16px 25px;
+
+    font-size: 15px;
+    font-weight: 900;
+
+    cursor: pointer;
+
+    transition: .2s;
+
+    box-shadow:
+        0 5px 12px rgba(180,0,0,.25);
 }
 
-/* =========================
-   ABOUT PREVIEW
-========================= */
+.hero-track button:hover {
+    background: #990000;
+    transform: translateY(-1px);
+}
 
-.about-preview,
-.contact-preview {
-    margin-top: 28px;
-    margin-bottom: 28px;
-    padding: 32px;
-    border: 1px solid #eadfce;
-    border-radius: 14px;
+
+/* ==================================================
+   CSS TRUCK
+================================================== */
+
+.hero-truck {
+    position: absolute;
+
+    z-index: 4;
+
+    right: 14%;
+    bottom: 20px;
+
+    width: 510px;
+    height: 245px;
+
+    filter:
+        drop-shadow(
+            0 15px 12px rgba(70,40,0,.28)
+        );
+}
+
+.truck-body {
+    position: absolute;
+
+    left: 20px;
+    bottom: 35px;
+
+    width: 460px;
+    height: 150px;
+}
+
+.truck-container {
+    position: absolute;
+
+    left: 115px;
+    top: 0;
+
+    width: 330px;
+    height: 125px;
+
     background:
-        linear-gradient(135deg,#fff,#fff8e5);
-    box-shadow: 0 7px 22px rgba(80,0,0,.08);
+        linear-gradient(
+            135deg,
+            #d90000,
+            #a90000
+        );
+
+    border: 4px solid #760000;
+
+    border-radius: 5px 15px 8px 8px;
+
+    box-shadow:
+        inset 0 -12px 0 rgba(0,0,0,.10);
 }
 
-.about-preview h2,
-.contact-preview h2 {
-    margin: 12px 0;
-    font-size: 30px;
+.truck-container:before {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    top: 0;
+
+    height: 12px;
+
+    background: #f5aa00;
 }
 
-.about-preview p,
-.contact-preview p {
-    max-width: 850px;
+.truck-logo {
+    position: absolute;
+
+    top: 35px;
+    left: 115px;
+
+    width: 90px;
+    height: 55px;
+
+    display: grid;
+    place-items: center;
+
+    background: #ffffff;
+
+    color: #c00000;
+
+    border-radius: 8px;
+
+    font-size: 27px;
+    font-weight: 950;
+
+    transform: skew(-5deg);
+}
+
+.truck-company {
+    position: absolute;
+
+    left: 75px;
+    bottom: 14px;
+
+    color: #ffffff;
+
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.truck-cabin {
+    position: absolute;
+
+    left: 0;
+    bottom: 0;
+
+    width: 155px;
+    height: 135px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #e40000,
+            #a90000
+        );
+
+    border-radius: 30px 8px 8px 8px;
+
+    border: 4px solid #750000;
+}
+
+.truck-window {
+    position: absolute;
+
+    left: 25px;
+    top: 18px;
+
+    width: 105px;
+    height: 52px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #2d4654,
+            #86c7df
+        );
+
+    border: 4px solid #222;
+
+    border-radius: 12px 5px 5px 5px;
+}
+
+.truck-front {
+    position: absolute;
+
+    left: 48px;
+    bottom: 29px;
+
+    color: #ffffff;
+
+    font-size: 19px;
+    font-weight: 950;
+}
+
+.truck-light {
+    position: absolute;
+
+    right: 4px;
+    bottom: 25px;
+
+    width: 13px;
+    height: 25px;
+
+    background: #ffd600;
+
+    border-radius: 5px;
+}
+
+.truck-wheel {
+    position: absolute;
+
+    bottom: 8px;
+
+    width: 55px;
+    height: 55px;
+
+    background: #151515;
+
+    border: 8px solid #333;
+
+    border-radius: 50%;
+
+    box-shadow:
+        inset 0 0 0 8px #111;
+}
+
+.wheel-one {
+    left: 48px;
+}
+
+.wheel-two {
+    left: 330px;
+}
+
+
+/* ==================================================
+   DESTINATION SIGN
+================================================== */
+
+.destination-sign {
+    position: absolute;
+
+    z-index: 8;
+
+    right: 3%;
+    bottom: 25px;
+
+    width: 135px;
+
+    padding: 12px 10px;
+
+    background: #292015;
+
+    border: 6px solid #7c6a45;
+
+    color: white;
+
+    text-align: center;
+
+    box-shadow:
+        0 8px 15px rgba(0,0,0,.25);
+}
+
+.destination-sign strong {
+    display: block;
+
+    font-size: 20px;
+}
+
+.destination-sign span {
+    display: block;
+
+    margin: 4px;
+
+    color: #ffd000;
+}
+
+.destination-sign small {
+    display: block;
+
+    margin-top: 8px;
+
+    padding: 5px;
+
+    background: #ffb000;
+
+    color: #111;
+
+    font-size: 11px;
+    font-weight: 950;
+}
+
+
+/* ==================================================
+   FEATURES
+================================================== */
+
+.feature-section {
+    background: #ffffff;
+
+    padding: 15px 0 20px;
+
+    position: relative;
+    z-index: 20;
+}
+
+.feature-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 20px;
+}
+
+.feature-card {
+    min-height: 115px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 17px;
+
+    padding: 18px 22px;
+
+    background: white;
+
+    border: 1px solid #eadfce;
+
+    border-radius: 10px;
+
+    box-shadow:
+        0 5px 14px rgba(70,30,0,.10);
+
+    border-bottom: 4px solid #c90000;
+}
+
+.yellow-card {
+    border-bottom-color: #ffad00;
+}
+
+.feature-icon {
+    flex-shrink: 0;
+
+    width: 58px;
+    height: 58px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 50%;
+
+    background: #c40000;
+
+    color: white;
+
+    font-size: 27px;
+}
+
+.yellow-card .feature-icon {
+    background: #ffb000;
+}
+
+.feature-card h3 {
+    margin: 0 0 6px;
+
+    font-size: 18px;
+}
+
+.feature-card p {
+    margin: 0;
+
     color: #555;
-    line-height: 1.7;
-    font-size: 17px;
+
+    font-size: 14px;
+    line-height: 1.5;
 }
 
-/* =========================
-   PAGE / TRACKING
-========================= */
+
+/* ==================================================
+   INFORMATION CARDS
+================================================== */
+
+.info-section {
+    padding: 20px 0 25px;
+
+    background: #fff;
+}
+
+.info-grid {
+    display: grid;
+
+    grid-template-columns:
+        1.1fr 1.1fr 1fr;
+
+    gap: 20px;
+}
+
+.info-card {
+    min-height: 300px;
+
+    position: relative;
+
+    overflow: hidden;
+
+    padding: 25px;
+
+    border: 1px solid #eadfce;
+
+    border-radius: 10px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #fffdf8,
+            #fff7df
+        );
+
+    box-shadow:
+        0 5px 16px rgba(80,40,0,.08);
+}
+
+.services-card {
+    background:
+        linear-gradient(
+            135deg,
+            #fffdf8,
+            #fffaf0
+        );
+}
+
+.india-card {
+    background: #fff;
+}
+
+.info-title {
+    color: #b80000;
+
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.title-line {
+    width: 45px;
+    height: 3px;
+
+    margin: 8px 0 14px;
+
+    background: #c40000;
+}
+
+.info-card p {
+    max-width: 470px;
+
+    color: #333;
+
+    font-size: 14px;
+
+    line-height: 1.6;
+}
+
+.experience-badge {
+    position: absolute;
+
+    right: 25px;
+    top: 28px;
+
+    width: 85px;
+    height: 85px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    background: white;
+
+    border: 4px solid #f2a900;
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 4px 12px rgba(150,80,0,.15);
+}
+
+.experience-badge span {
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.experience-badge strong {
+    font-size: 22px;
+}
+
+.info-button {
+    display: inline-block;
+
+    margin-top: 7px;
+
+    padding: 10px 15px;
+
+    background: #b90000;
+
+    color: white;
+
+    border-radius: 6px;
+
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.info-button:hover {
+    background: #8f0000;
+}
+
+
+/* ==================================================
+   ROUTES
+================================================== */
+
+.route-list {
+    list-style: none;
+
+    padding: 0;
+    margin: 15px 0;
+}
+
+.route-list li {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 6px 0;
+
+    border-bottom: 1px dashed #ead8b5;
+
+    font-size: 14px;
+}
+
+.route-list li span {
+    color: #c40000;
+}
+
+.route-list b {
+    color: #b00000;
+
+    font-size: 12px;
+}
+
+
+/* ==================================================
+   INDIA VISUAL
+================================================== */
+
+.india-map {
+    height: 145px;
+
+    position: relative;
+
+    margin-top: 12px;
+
+    background:
+        linear-gradient(
+            160deg,
+            transparent 40%,
+            #fff0d1 40%
+        );
+
+    overflow: hidden;
+}
+
+.india-shape {
+    position: absolute;
+
+    left: 28%;
+    top: 12px;
+
+    width: 150px;
+    height: 120px;
+
+    display: grid;
+    place-items: center;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff8a00,
+            #d00000
+        );
+
+    clip-path: polygon(
+        25% 0,
+        55% 5%,
+        72% 20%,
+        88% 33%,
+        80% 48%,
+        70% 57%,
+        72% 75%,
+        58% 100%,
+        45% 75%,
+        35% 68%,
+        25% 52%,
+        12% 45%,
+        18% 28%,
+        8% 18%
+    );
+
+    color: white;
+
+    font-weight: 950;
+    font-size: 18px;
+}
+
+.route-dot {
+    position: absolute;
+
+    width: 10px;
+    height: 10px;
+
+    background: #c40000;
+
+    border: 3px solid white;
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 0 0 2px #c40000;
+}
+
+.dot-1 {
+    left: 12%;
+    top: 90px;
+}
+
+.dot-2 {
+    left: 40%;
+    top: 40px;
+}
+
+.dot-3 {
+    right: 22%;
+    top: 65px;
+}
+
+.dot-4 {
+    right: 8%;
+    top: 110px;
+}
+
+
+/* ==================================================
+   TRUST STRIP
+================================================== */
+
+.trust-strip {
+    padding: 10px 0;
+
+    background:
+        linear-gradient(
+            90deg,
+            #990000,
+            #d00000,
+            #990000
+        );
+
+    color: white;
+}
+
+.trust-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    max-width: 1300px;
+}
+
+.trust-grid > div {
+    min-height: 58px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 12px;
+
+    border-right: 1px solid rgba(255,255,255,.35);
+}
+
+.trust-grid > div:last-child {
+    border-right: 0;
+}
+
+.trust-grid strong {
+    color: #ffd000;
+
+    font-size: 21px;
+}
+
+.trust-grid span {
+    font-size: 13px;
+    font-weight: 800;
+}
+
+
+/* ==================================================
+   CONTACT
+================================================== */
+
+.home-contact {
+    padding: 45px 0;
+
+    background:
+        linear-gradient(
+            135deg,
+            #fff9eb,
+            #ffffff
+        );
+}
+
+.contact-box {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 30px;
+
+    background: white;
+
+    border: 1px solid #eadfce;
+
+    border-radius: 16px;
+
+    padding: 35px;
+
+    box-shadow:
+        0 8px 25px rgba(70,30,0,.08);
+}
+
+.eyebrow.dark {
+    color: #b00000;
+}
+
+.contact-box h2 {
+    margin: 8px 0;
+
+    font-size: 30px;
+
+    color: #a90000;
+}
+
+.contact-box p {
+    color: #555;
+}
+
+.contact-details {
+    display: flex;
+    flex-direction: column;
+
+    gap: 15px;
+}
+
+.contact-details div {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    font-size: 16px;
+}
+
+.contact-details span {
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+    place-items: center;
+
+    background: #c00000;
+
+    color: white;
+
+    border-radius: 50%;
+
+    font-size: 20px;
+}
+
+
+/* ==================================================
+   FOOTER
+================================================== */
+
+footer {
+    background:
+        linear-gradient(
+            135deg,
+            #970000,
+            #cf0000
+        );
+
+    color: white;
+
+    padding: 35px 5%;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    gap: 30px;
+
+    border-top: 5px solid #ffc400;
+}
+
+footer b {
+    color: #ffd000;
+}
+
+footer p,
+footer div {
+    line-height: 1.5;
+}
+
+footer a {
+    color: white;
+}
+
+footer a:hover {
+    color: #ffd000;
+}
+
+
+/* ==================================================
+   COMMON BUTTON
+================================================== */
+
+.btn,
+button {
+    cursor: pointer;
+}
+
+
+/* ==================================================
+   FLASH
+================================================== */
+
+.flash {
+    max-width: 1100px;
+
+    margin: 15px auto;
+
+    padding: 12px 20px;
+
+    background: #fff3c7;
+
+    border-left: 5px solid #ffad00;
+
+    border-radius: 8px;
+}
+
+
+/* ==================================================
+   TRACKING PAGE
+================================================== */
 
 .page {
-    padding-top: 45px;
+    padding-top: 50px;
     padding-bottom: 60px;
-    min-height: 500px;
+}
+
+.panel {
+    background: white;
+
+    border: 1px solid #eadfce;
+
+    border-radius: 15px;
+
+    padding: 30px;
+
+    box-shadow:
+        0 8px 25px rgba(80,30,0,.08);
 }
 
 .row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 20px;
+
+    gap: 20px;
 }
 
 .pill {
-    background: #e7f7e9;
+    background: #e8f7ea;
+
     color: #16803c;
-    border-radius: 30px;
+
     padding: 8px 15px;
-    font-weight: bold;
+
+    border-radius: 30px;
+
+    font-weight: 800;
 }
 
 .stats {
     display: grid;
-    grid-template-columns: repeat(4,1fr);
-    gap: 14px;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 15px;
+
     margin: 25px 0;
 }
 
 .stats div {
-    background: linear-gradient(135deg,#fff8df,#fff);
-    border: 1px solid #ffe09a;
     padding: 17px;
-    border-radius: 13px;
+
+    background: #fff8e5;
+
+    border: 1px solid #ffe09a;
+
+    border-radius: 10px;
 }
 
-.stats small,
-.row small {
+.stats small {
     display: block;
-    color: #8a6a20;
+
+    color: #80631d;
+
     margin-bottom: 5px;
 }
 
-/* =========================
-   TIMELINE
-========================= */
-
 .timeline {
     border-left: 3px solid #c90000;
+
     padding-left: 25px;
+
     margin: 25px 0;
 }
 
 .event {
     position: relative;
+
     margin-bottom: 25px;
 }
 
 .event:before {
     content: "";
+
     position: absolute;
+
     left: -34px;
-    top: 3px;
+    top: 2px;
+
     width: 12px;
     height: 12px;
+
     background: #c90000;
+
     border: 3px solid white;
+
     border-radius: 50%;
-    box-shadow: 0 0 0 2px #c90000;
+
+    box-shadow:
+        0 0 0 2px #c90000;
 }
 
 .event span,
 .event small {
     display: block;
+
     color: #707070;
-    margin-top: 4px;
+
+    margin-top: 5px;
 }
 
-/* =========================
-   LOGIN / FORMS
-========================= */
 
-.login {
-    max-width: 420px;
-    margin: 50px auto;
-}
-
-.panel input,
-.panel select,
-.panel textarea {
-    width: 100%;
-    padding: 13px;
-    border: 1px solid #e1d5bd;
-    border-radius: 9px;
-    margin: 7px 0;
-    font: inherit;
-}
-
-.panel input:focus,
-.panel select:focus,
-.panel textarea:focus {
-    outline: none;
-    border-color: #e00000;
-    box-shadow: 0 0 0 3px rgba(224,0,0,.10);
-}
-
-.grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px 15px;
-}
-
-.form label {
-    font-weight: bold;
-    font-size: 14px;
-}
-
-.form textarea {
-    min-height: 100px;
-}
-
-/* =========================
-   TABLE
-========================= */
-
-.tablebox {
-    overflow: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
-
-th {
-    background: #b40000;
-    color: white;
-}
-
-th,
-td {
-    text-align: left;
-    padding: 13px;
-    border-bottom: 1px solid #eee;
-    white-space: nowrap;
-}
-
-.inline {
-    display: inline;
-}
-
-.danger {
-    background: #d40000;
-    color: white;
-    padding: 7px 10px;
-}
-
-.secondary {
-    background: #fff0d0;
-    color: #8b3e00;
-}
-
-.flash {
-    max-width: 1100px;
-    margin: 15px auto;
-    padding: 12px 20px;
-    background: #fff3c7;
-    border-left: 5px solid #ffad00;
-    border-radius: 10px;
-}
-
-.tablebox > a {
-    color: #b40000;
-}
-
-/* =========================
-   FOOTER
-========================= */
-
-footer {
-    background:
-        linear-gradient(135deg,#9f0000,#d40000);
-    color: white;
-    padding: 32px 5%;
-    border-top: 5px solid #ffc400;
-    display: grid;
-    grid-template-columns: repeat(4,1fr);
-    gap: 30px;
-}
-
-footer b {
-    color: #ffd400;
-    font-size: 17px;
-}
-
-footer p {
-    line-height: 1.6;
-    color: #fff;
-}
-
-footer a {
-    color: white;
-    text-decoration: none;
-}
-
-footer a:hover {
-    color: #ffd400;
-}
-
-/* =========================
+/* ==================================================
    MOBILE
-========================= */
+================================================== */
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+
+    .hero-truck {
+        right: 2%;
+        transform: scale(.8);
+        transform-origin: bottom right;
+    }
+
+    .destination-sign {
+        display: none;
+    }
+
+    .feature-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .india-card {
+        grid-column: span 2;
+    }
+}
+
+
+@media (max-width: 800px) {
 
     header {
-        min-height: auto;
-        padding: 12px 4%;
+        height: auto;
+
+        padding: 12px 20px;
+
         flex-direction: column;
+
         gap: 12px;
     }
 
     nav {
+        gap: 15px;
+
         flex-wrap: wrap;
+
         justify-content: center;
     }
 
     nav a {
         font-size: 14px;
-        padding: 9px 10px;
     }
-
-    .hero {
-        min-height: 470px;
-        padding: 40px 20px 80px;
-    }
-
-    .hero::after {
-        right: 4%;
-        font-size: 110px;
-    }
-
-    .hero h1 {
-        font-size: 43px;
-    }
-
-    .cards {
-        grid-template-columns: 1fr;
-    }
-
-    .stats {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    footer {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-@media (max-width: 600px) {
 
     .brand b {
         font-size: 20px;
     }
 
     .brand small {
-        font-size: 13px;
-    }
-
-    .logo {
-        width: 52px;
-        height: 52px;
-        font-size: 19px;
-    }
-
-    nav {
-        gap: 2px;
-    }
-
-    nav a {
         font-size: 12px;
-        padding: 7px 6px;
     }
 
-    .hero {
-        padding: 30px 16px 70px;
-        min-height: 500px;
+    .home-hero {
+        min-height: auto;
     }
 
-    .hero h1 {
-        font-size: 38px;
+    .hero-content {
+        padding-top: 35px;
+        padding-bottom: 300px;
     }
 
-    .hero p {
-        font-size: 16px;
+    .home-hero h1 {
+        font-size: 45px;
     }
 
-    .hero::after {
-        right: 2%;
+    .hero-truck {
+        left: 50%;
+        right: auto;
         bottom: 10px;
-        font-size: 80px;
+
+        transform:
+            translateX(-50%)
+            scale(.62);
+
+        transform-origin: bottom center;
     }
 
-    .hero-buttons {
-        flex-direction: column;
+    .hero-track {
+        max-width: 100%;
     }
 
-    .hero-buttons .btn {
-        text-align: center;
-    }
-
-    .track {
-        display: block;
-        background: transparent;
-        box-shadow: none;
-        padding: 0;
-    }
-
-    .track input {
-        width: 100%;
-        margin-bottom: 8px;
-        box-shadow: 0 5px 15px rgba(0,0,0,.15);
-    }
-
-    .track button {
-        width: 100%;
-    }
-
-    .stats,
-    .grid {
+    .info-grid {
         grid-template-columns: 1fr;
     }
 
-    .row {
-        align-items: flex-start;
+    .india-card {
+        grid-column: auto;
+    }
+
+    .stats {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .contact-box {
         flex-direction: column;
+        align-items: flex-start;
     }
 
     footer {
-        grid-template-columns: 1fr;
+        flex-direction: column;
         text-align: center;
     }
+}
 
-    .about-preview,
-    .contact-preview {
+
+@media (max-width: 600px) {
+
+    .wrap {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+
+    .since-badge {
+        font-size: 12px;
+    }
+
+    .trusted-text {
+        display: block;
+
+        margin: 10px 0 0;
+
+        font-size: 14px;
+    }
+
+    .home-hero h1 {
+        font-size: 39px;
+    }
+
+    .hero-description {
+        font-size: 16px;
+    }
+
+    .hero-points {
+        font-size: 14px;
+    }
+
+    .hero-track {
+        display: block;
+
+        padding: 8px;
+    }
+
+    .track-icon {
+        display: none;
+    }
+
+    .hero-track input {
+        width: 100%;
+
+        margin-bottom: 7px;
+    }
+
+    .hero-track button {
+        width: 100%;
+    }
+
+    .feature-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .feature-card {
+        min-height: auto;
+    }
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .trust-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .trust-grid > div {
+        border-bottom: 1px solid rgba(255,255,255,.25);
+    }
+
+    .contact-box {
         padding: 22px;
+    }
+
+    .contact-box h2 {
+        font-size: 24px;
     }
 }
