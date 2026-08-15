@@ -4,216 +4,430 @@
 
 {% block content %}
 
-<main class="wrap page">
+<main class="shipment-page">
 
-<form class="panel form" method="post">
+    <div class="shipment-layout">
 
-<h2>{{ 'Edit' if shipment else 'Add' }} Shipment</h2>
+        <!-- ==============================
+             LEFT ADMIN SIDEBAR
+        =============================== -->
 
-<div class="grid">
+        <aside class="admin-sidebar">
 
-<label>
-Docket / AWB
-<input
-    name="docket"
-    required
-    value="{{ shipment.docket if shipment else '' }}"
->
-</label>
+            <div class="sidebar-heading">
+                ADMIN PANEL
+            </div>
 
+            <a href="{{ url_for('admin') }}" class="sidebar-item">
+                <span>▦</span>
+                Dashboard
+            </a>
 
-<label>
-Booking Date
-<input
-    type="date"
-    name="booking_date"
-    required
-    value="{{ shipment.booking_date if shipment else '' }}"
->
-</label>
+            <a href="{{ url_for('new_shipment') }}"
+               class="sidebar-item {% if not shipment %}active{% endif %}">
+                <span>⊕</span>
+                Add Shipment
+            </a>
 
+            <a href="{{ url_for('admin') }}"
+               class="sidebar-item {% if shipment %}active{% endif %}">
+                <span>☷</span>
+                Manage Shipments
+            </a>
 
-<label>
-From
-<input
-    name="source"
-    required
-    value="{{ shipment.source if shipment else '' }}"
->
-</label>
+            <a href="{{ url_for('logout') }}" class="sidebar-item">
+                <span>↪</span>
+                Logout
+            </a>
 
-
-<label>
-To
-<input
-    name="destination"
-    required
-    value="{{ shipment.destination if shipment else '' }}"
->
-</label>
+        </aside>
 
 
-<label>
-Consignor
-<input
-    name="consignor"
-    value="{{ shipment.consignor if shipment else '' }}"
->
-</label>
+        <!-- ==============================
+             RIGHT CONTENT
+        =============================== -->
+
+        <section class="shipment-content">
+
+            <!-- PAGE TITLE -->
+
+            <div class="shipment-title">
+
+                {% if shipment %}
+                    <span class="title-icon">✎</span>
+                    <h2>Edit Shipment</h2>
+                {% else %}
+                    <span class="title-icon">▣</span>
+                    <h2>Add Shipment</h2>
+                {% endif %}
+
+            </div>
 
 
-<label>
-Consignee
-<input
-    name="consignee"
-    value="{{ shipment.consignee if shipment else '' }}"
->
-</label>
+            <!-- ==============================
+                 EDIT SUMMARY
+            =============================== -->
+
+            {% if shipment %}
+
+            <div class="shipment-summary">
+
+                <div>
+                    <span>Docket / AWB No.</span>
+                    <strong>{{ shipment.docket }}</strong>
+                </div>
+
+                <div>
+                    <span>Route</span>
+                    <strong>
+                        {{ shipment.source }} → {{ shipment.destination }}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Current Status</span>
+                    <strong>{{ shipment.status }}</strong>
+                </div>
+
+                <div>
+                    <span>Last Updated</span>
+                    <strong>
+                        {% if latest_event %}
+                            {{ latest_event.event_time }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </strong>
+                </div>
+
+            </div>
+
+            {% endif %}
 
 
-<label>
-Packages
-<input
-    type="number"
-    min="1"
-    name="packages"
-    value="{{ shipment.packages if shipment else 1 }}"
->
-</label>
+            <!-- ==============================
+                 FORM
+            =============================== -->
+
+            <form class="shipment-form" method="post">
 
 
-<label>
-Weight
-<input
-    name="weight"
-    value="{{ shipment.weight if shipment else '' }}"
->
-</label>
+                <!-- ==============================
+                     SHIPMENT DETAILS
+                =============================== -->
+
+                <div class="form-card">
+
+                    <div class="form-card-title">
+                        <span>▣</span>
+                        Shipment Details
+                    </div>
 
 
-<label>
-Status
+                    <div class="form-grid shipment-grid">
 
-<select name="status">
+                        <label class="full-field">
+                            <span>Docket / AWB No.</span>
 
-{% for x in [
-    'Booked',
-    'Picked Up',
-    'In Transit',
-    'Arrived at Destination',
-    'Out for Delivery',
-    'Delivered',
-    'On Hold'
-] %}
-
-<option
-    value="{{ x }}"
-    {% if shipment and shipment.status == x %}
-        selected
-    {% elif not shipment and x == 'Booked' %}
-        selected
-    {% endif %}
->
-    {{ x }}
-</option>
-
-{% endfor %}
-
-</select>
-
-</label>
+                            <input
+                                name="docket"
+                                required
+                                placeholder="Enter docket or AWB number"
+                                value="{{ shipment.docket if shipment else '' }}"
+                            >
+                        </label>
 
 
-<label>
-Current Location
-<input
-    name="location"
-    value="{{ shipment.location if shipment else '' }}"
->
-</label>
+                        <label>
+                            <span>Booking Date</span>
+
+                            <input
+                                type="date"
+                                name="booking_date"
+                                required
+                                value="{{ shipment.booking_date if shipment else '' }}"
+                            >
+                        </label>
 
 
-<!-- =====================================
-     MANUAL TRACKING DATE
-     ===================================== -->
+                        <label>
+                            <span>Packages</span>
 
-<label>
-
-Event Date
-
-<input
-    type="date"
-    name="event_date"
-    required
-    value="{{
-        latest_event.event_time[:10]
-        if latest_event
-        else (shipment.booking_date if shipment else '')
-    }}"
->
-
-</label>
+                            <input
+                                type="number"
+                                min="1"
+                                name="packages"
+                                placeholder="Number of packages"
+                                value="{{ shipment.packages if shipment else 1 }}"
+                            >
+                        </label>
 
 
-<!-- =====================================
-     MANUAL TRACKING TIME
-     ===================================== -->
+                        <label>
+                            <span>Weight (kg)</span>
 
-<label>
+                            <input
+                                name="weight"
+                                placeholder="Enter weight"
+                                value="{{ shipment.weight if shipment else '' }}"
+                            >
+                        </label>
 
-Event Time
+                    </div>
 
-<input
-    type="time"
-    name="event_time"
-    required
-    value="{{
-        latest_event.event_time[11:16]
-        if latest_event
-        else '10:00'
-    }}"
->
-
-</label>
+                </div>
 
 
-<label>
-Expected Delivery
+                <!-- ==============================
+                     ROUTE & LOCATION
+                =============================== -->
 
-<input
-    type="date"
-    name="expected_delivery"
-    value="{{ shipment.expected_delivery if shipment else '' }}"
->
+                <div class="form-card">
 
-</label>
-
-</div>
+                    <div class="form-card-title">
+                        <span>▣</span>
+                        Route & Location
+                    </div>
 
 
-<label>
+                    <div class="form-grid two-column">
 
-Remark
+                        <label>
+                            <span>From</span>
 
-<textarea name="remark">{{ shipment.remark if shipment else '' }}</textarea>
-
-</label>
-
-
-<button type="submit">
-Save Shipment
-</button>
-
-
-<a
-    class="btn secondary"
-    href="{{ url_for('admin') }}"
->
-Cancel
-</a>
+                            <input
+                                name="source"
+                                required
+                                placeholder="Origin location"
+                                value="{{ shipment.source if shipment else '' }}"
+                            >
+                        </label>
 
 
-</form>
+                        <label>
+                            <span>To</span>
+
+                            <input
+                                name="destination"
+                                required
+                                placeholder="Destination location"
+                                value="{{ shipment.destination if shipment else '' }}"
+                            >
+                        </label>
+
+
+                        <label>
+                            <span>Current Location</span>
+
+                            <input
+                                name="location"
+                                placeholder="Current location"
+                                value="{{ shipment.location if shipment else '' }}"
+                            >
+                        </label>
+
+
+                        <label>
+                            <span>Status</span>
+
+                            <select name="status">
+
+                                {% for x in [
+                                    'Booked',
+                                    'Picked Up',
+                                    'In Transit',
+                                    'Arrived at Destination',
+                                    'Out for Delivery',
+                                    'Delivered',
+                                    'On Hold'
+                                ] %}
+
+                                <option
+                                    value="{{ x }}"
+                                    {% if shipment and shipment.status == x %}
+                                        selected
+                                    {% elif not shipment and x == 'Booked' %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ x }}
+                                </option>
+
+                                {% endfor %}
+
+                            </select>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==============================
+                     CONSIGNOR / CONSIGNEE
+                =============================== -->
+
+                <div class="form-card">
+
+                    <div class="form-card-title">
+                        <span>▧</span>
+                        Consignor & Consignee
+                    </div>
+
+
+                    <div class="form-grid two-column">
+
+                        <label>
+                            <span>Consignor</span>
+
+                            <input
+                                name="consignor"
+                                placeholder="Enter consignor name"
+                                value="{{ shipment.consignor if shipment else '' }}"
+                            >
+                        </label>
+
+
+                        <label>
+                            <span>Consignee</span>
+
+                            <input
+                                name="consignee"
+                                placeholder="Enter consignee name"
+                                value="{{ shipment.consignee if shipment else '' }}"
+                            >
+                        </label>
+
+
+                        <!-- EVENT DATE -->
+
+                        <label>
+                            <span>Event Date</span>
+
+                            <input
+                                type="date"
+                                name="event_date"
+                                required
+                                value="{{
+                                    latest_event.event_time[:10]
+                                    if latest_event
+                                    else (shipment.booking_date if shipment else '')
+                                }}"
+                            >
+                        </label>
+
+
+                        <!-- EVENT TIME -->
+
+                        <label>
+                            <span>Event Time</span>
+
+                            <input
+                                type="time"
+                                name="event_time"
+                                required
+                                value="{{
+                                    latest_event.event_time[11:16]
+                                    if latest_event
+                                    else '10:00'
+                                }}"
+                            >
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==============================
+                     DELIVERY INFORMATION
+                =============================== -->
+
+                <div class="form-card">
+
+                    <div class="form-card-title">
+                        <span>▣</span>
+                        Delivery Information
+                    </div>
+
+
+                    <div class="delivery-field">
+
+                        <label>
+                            <span>Expected Delivery</span>
+
+                            <input
+                                type="date"
+                                name="expected_delivery"
+                                value="{{ shipment.expected_delivery if shipment else '' }}"
+                            >
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==============================
+                     REMARK
+                =============================== -->
+
+                <div class="form-card">
+
+                    <div class="form-card-title">
+                        <span>◯</span>
+                        Additional Information
+                    </div>
+
+
+                    <label class="remark-field">
+
+                        <span>Remark</span>
+
+                        <textarea
+                            name="remark"
+                            rows="4"
+                            placeholder="Enter any additional remarks..."
+                        >{{ shipment.remark if shipment else '' }}</textarea>
+
+                    </label>
+
+                </div>
+
+
+                <!-- ==============================
+                     BUTTONS
+                =============================== -->
+
+                <div class="shipment-actions">
+
+                    <button type="submit" class="shipment-save-btn">
+
+                        {% if shipment %}
+                            ▣ &nbsp; Update Shipment
+                        {% else %}
+                            ▣ &nbsp; Save Shipment
+                        {% endif %}
+
+                    </button>
+
+
+                    <a
+                        class="shipment-cancel-btn"
+                        href="{{ url_for('admin') }}"
+                    >
+                        Cancel
+                    </a>
+
+                </div>
+
+
+            </form>
+
+        </section>
+
+    </div>
 
 </main>
 
