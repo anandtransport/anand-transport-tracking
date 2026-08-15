@@ -1813,3 +1813,498 @@ button {
     }
 
 }
+/* =========================================================
+   ADMIN ADD / EDIT SHIPMENT
+   NEW CLEAN COLUMN DESIGN
+   ========================================================= */
+
+.shipment-page {
+    width: 100%;
+    max-width: 1450px;
+    margin: 0 auto;
+    padding: 38px 35px 60px;
+}
+
+
+/* =========================================================
+   MAIN LAYOUT
+   ========================================================= */
+
+.shipment-layout {
+    display: grid;
+    grid-template-columns: 215px minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+}
+
+
+/* =========================================================
+   ADMIN SIDEBAR
+   ========================================================= */
+
+.admin-sidebar {
+    background: #ffffff;
+    border: 1px solid #eadfce;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(70, 30, 0, .07);
+}
+
+.sidebar-heading {
+    padding: 19px 17px 13px;
+    color: #a90000;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .7px;
+}
+
+.sidebar-item {
+    min-height: 45px;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 0 15px;
+
+    color: #222;
+    border-left: 4px solid transparent;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    transition: .2s ease;
+}
+
+.sidebar-item span {
+    width: 20px;
+    text-align: center;
+    font-size: 17px;
+}
+
+.sidebar-item:hover {
+    color: #b40000;
+    background: #fff6ee;
+}
+
+.sidebar-item.active {
+    color: #b40000;
+    background: #fff0e8;
+    border-left-color: #c40000;
+}
+
+
+/* =========================================================
+   RIGHT CONTENT
+   ========================================================= */
+
+.shipment-content {
+    min-width: 0;
+}
+
+
+/* =========================================================
+   TITLE
+   ========================================================= */
+
+.shipment-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    margin-bottom: 18px;
+}
+
+.shipment-title h2 {
+    margin: 0;
+
+    color: #a90000;
+    font-size: 25px;
+    font-weight: 900;
+}
+
+.title-icon {
+    color: #c40000;
+    font-size: 23px;
+}
+
+
+/* =========================================================
+   EDIT SUMMARY
+   ========================================================= */
+
+.shipment-summary {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr 1fr 1.35fr;
+
+    gap: 12px;
+
+    margin-bottom: 15px;
+    padding: 12px 14px;
+
+    background: #fff9e8;
+
+    border: 1px solid #f1d07b;
+    border-radius: 9px;
+}
+
+.shipment-summary div {
+    min-width: 0;
+}
+
+.shipment-summary span {
+    display: block;
+
+    margin-bottom: 4px;
+
+    color: #866522;
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.shipment-summary strong {
+    display: block;
+
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    color: #222;
+
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+.shipment-form {
+    width: 100%;
+}
+
+
+/* =========================================================
+   FORM CARD
+   ========================================================= */
+
+.form-card {
+    margin-bottom: 13px;
+
+    padding: 15px 17px 17px;
+
+    background: #ffffff;
+
+    border: 1px solid #eadfce;
+    border-radius: 10px;
+
+    box-shadow: 0 4px 13px rgba(70, 30, 0, .045);
+}
+
+
+/* =========================================================
+   SECTION TITLE
+   ========================================================= */
+
+.form-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    margin-bottom: 14px;
+
+    color: #b40000;
+
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.form-card-title span {
+    color: #c40000;
+    font-size: 16px;
+}
+
+
+/* =========================================================
+   GRID
+   ========================================================= */
+
+.form-grid {
+    display: grid;
+    gap: 13px 16px;
+}
+
+.shipment-grid {
+    grid-template-columns: 1.5fr 1fr 1fr;
+}
+
+.two-column {
+    grid-template-columns: 1fr 1fr;
+}
+
+.full-field {
+    grid-column: 1 / -1;
+}
+
+
+/* =========================================================
+   LABELS
+   ========================================================= */
+
+.shipment-form label {
+    display: block;
+    min-width: 0;
+}
+
+.shipment-form label > span {
+    display: block;
+
+    margin-bottom: 5px;
+
+    color: #303030;
+
+    font-size: 12px;
+    font-weight: 800;
+}
+
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+
+.shipment-form input,
+.shipment-form select,
+.shipment-form textarea {
+    width: 100%;
+
+    border: 1px solid #d8d3ce;
+    border-radius: 6px;
+
+    background: #ffffff;
+
+    color: #222;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+
+    outline: none;
+
+    transition: .2s ease;
+}
+
+.shipment-form input,
+.shipment-form select {
+    height: 39px;
+    padding: 0 10px;
+}
+
+.shipment-form textarea {
+    min-height: 88px;
+    padding: 10px;
+    resize: vertical;
+}
+
+.shipment-form input::placeholder,
+.shipment-form textarea::placeholder {
+    color: #999;
+}
+
+.shipment-form input:hover,
+.shipment-form select:hover,
+.shipment-form textarea:hover {
+    border-color: #c7b8aa;
+}
+
+.shipment-form input:focus,
+.shipment-form select:focus,
+.shipment-form textarea:focus {
+    border-color: #c40000;
+
+    box-shadow:
+        0 0 0 3px rgba(196, 0, 0, .08);
+}
+
+
+/* =========================================================
+   DELIVERY
+   ========================================================= */
+
+.delivery-field {
+    width: 48%;
+}
+
+
+/* =========================================================
+   REMARK
+   ========================================================= */
+
+.remark-field {
+    width: 100%;
+}
+
+
+/* =========================================================
+   BUTTON AREA
+   ========================================================= */
+
+.shipment-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    gap: 16px;
+
+    margin-top: 5px;
+}
+
+
+/* =========================================================
+   SAVE / UPDATE BUTTON
+   ========================================================= */
+
+.shipment-save-btn {
+    border: 0;
+    border-radius: 6px;
+
+    padding: 11px 23px;
+
+    background: #c40000;
+    color: #ffffff;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+
+    cursor: pointer;
+
+    box-shadow: 0 4px 10px rgba(180, 0, 0, .18);
+
+    transition: .2s ease;
+}
+
+.shipment-save-btn:hover {
+    background: #980000;
+    transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   CANCEL
+   ========================================================= */
+
+.shipment-cancel-btn {
+    color: #72139a;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    text-decoration: none;
+}
+
+.shipment-cancel-btn:hover {
+    text-decoration: underline;
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 1050px) {
+
+    .shipment-layout {
+        grid-template-columns: 185px minmax(0, 1fr);
+    }
+
+    .shipment-summary {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .shipment-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .delivery-field {
+        width: 100%;
+    }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 800px) {
+
+    .shipment-page {
+        padding: 25px 18px 45px;
+    }
+
+    .shipment-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-sidebar {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .sidebar-heading {
+        width: 100%;
+    }
+
+    .sidebar-item {
+        flex: 1;
+        min-width: 130px;
+    }
+
+    .shipment-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .shipment-grid,
+    .two-column {
+        grid-template-columns: 1fr;
+    }
+
+    .full-field {
+        grid-column: auto;
+    }
+
+    .delivery-field {
+        width: 100%;
+    }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 500px) {
+
+    .shipment-page {
+        padding: 20px 12px 40px;
+    }
+
+    .shipment-title h2 {
+        font-size: 21px;
+    }
+
+    .form-card {
+        padding: 13px;
+    }
+
+    .sidebar-item {
+        flex-basis: 100%;
+    }
+
+    .shipment-actions {
+        flex-direction: column;
+    }
+
+    .shipment-save-btn {
+        width: 100%;
+    }
+}
