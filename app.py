@@ -2069,6 +2069,54 @@ background:#fff0f0;
 color:#a00000;
 }
 
+.report-filter{
+background:white;
+border:1px solid var(--line);
+border-radius:14px;
+padding:18px;
+margin-bottom:22px;
+box-shadow:0 3px 12px #00000008;
+}
+.report-filter-row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.report-field{min-width:190px}
+.report-field label{
+display:block;font-size:12px;font-weight:800;color:var(--muted);
+margin-bottom:6px;text-transform:uppercase;
+}
+.report-field input{
+width:100%;padding:10px 12px;border:1px solid #d8dce5;
+border-radius:8px;font-size:14px;
+}
+.report-summary{
+display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;
+}
+.report-card{
+background:white;border:1px solid var(--line);border-radius:14px;
+padding:17px;box-shadow:0 3px 12px #00000008;
+}
+.report-card .label{color:var(--muted);font-size:12px;font-weight:800;text-transform:uppercase}
+.report-card .num{font-size:25px;font-weight:900;margin-top:7px}
+.report-table{width:100%;border-collapse:collapse;min-width:1250px}
+.report-table th,.report-table td{
+padding:12px 10px;border-bottom:1px solid var(--line);
+font-size:13px;text-align:left;vertical-align:middle;
+}
+.report-table th{
+background:#fafafa;color:#596174;font-size:11px;text-transform:uppercase;white-space:nowrap;
+}
+.report-table .center{text-align:center}
+.report-table .amount{text-align:right;font-weight:800}
+.report-total td{background:#fff8e8;border-top:2px solid var(--gold);font-weight:900}
+.basis-badge{
+display:inline-block;padding:5px 9px;border-radius:999px;
+font-size:11px;font-weight:900;white-space:nowrap;
+}
+.basis-paid{background:#e5f8ee;color:#08703c}
+.basis-tbb{background:#fff4cf;color:#7b5200}
+.basis-topay{background:#e7f1ff;color:#125a9c}
+@media(max-width:900px){.report-summary{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.report-summary{grid-template-columns:1fr}.report-field{width:100%}}
+
 .flash{
 background:#e9f8ef;
 color:#126b3d;
@@ -2193,6 +2241,13 @@ href="{{ url_for('money_receipt') }}"
 
 <a
 class="btn secondary"
+href="{{ url_for('booking_report') }}"
+>
+📊 Booking Report
+</a>
+
+<a
+class="btn secondary"
 href="{{ url_for('admin') }}"
 >
 ↻ Refresh
@@ -2276,6 +2331,89 @@ DELIVERED
 </section>
 
 
+<section class="report-filter">
+<div style="font-size:18px;font-weight:900;margin-bottom:5px">📊 Booking Report</div>
+<div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+Custom date period select karke us period ki complete booking list dekhein.
+</div>
+<form method="GET" action="{{ url_for('admin') }}">
+<div class="report-filter-row">
+<div class="report-field">
+<label>From Date</label>
+<input type="date" name="from_date" value="{{ from_date }}">
+</div>
+<div class="report-field">
+<label>To Date</label>
+<input type="date" name="to_date" value="{{ to_date }}">
+</div>
+<button class="btn primary" type="submit">Generate Report</button>
+<a class="btn secondary" href="{{ url_for('admin') }}">Reset</a>
+</div>
+</form>
+</section>
+
+<section class="report-summary">
+<div class="report-card"><div class="label">Total Docket</div><div class="num">{{ total }}</div></div>
+<div class="report-card"><div class="label">Total PKG</div><div class="num">{{ total_packages }}</div></div>
+<div class="report-card"><div class="label">Total Weight</div><div class="num">{{ total_weight_text }} KG</div></div>
+<div class="report-card"><div class="label">Total Amount</div><div class="num">₹ {{ total_amount_text }}</div></div>
+</section>
+
+<section class="card">
+<div class="cardhead">
+<h3>Booking Report Details</h3>
+<div style="font-size:12px;color:var(--muted);font-weight:700">
+{% if from_date or to_date %}{{ from_date or 'Beginning' }} → {{ to_date or 'Today' }}{% else %}All Bookings{% endif %}
+</div>
+</div>
+<div class="tablewrap">
+<table class="report-table">
+<thead><tr>
+<th>SR. No.</th><th>Docket No.</th><th>Consignor</th><th>Consignee</th>
+<th>Date</th><th>Booking Basis</th><th>PKG</th><th>Weight</th>
+<th>Delivery Location</th><th style="text-align:right">Amount</th>
+</tr></thead>
+<tbody>
+{% for s in shipments %}
+<tr>
+<td class="center">{{ loop.index }}</td>
+<td><strong>{{ s.docket }}</strong></td>
+<td>{{ s.consignor or '-' }}</td>
+<td>{{ s.consignee or '-' }}</td>
+<td>{{ s.booking_date }}</td>
+<td>
+{% set basis=(s.freight_basis or 'To Pay') %}
+{% if basis|lower == 'paid' %}
+<span class="basis-badge basis-paid">PAID</span>
+{% elif basis|lower == 'tbb' %}
+<span class="basis-badge basis-tbb">TBB</span>
+{% else %}
+<span class="basis-badge basis-topay">TO PAY</span>
+{% endif %}
+</td>
+<td class="center">{{ s.packages or 0 }}</td>
+<td>{{ s.weight or '-' }}</td>
+<td><strong>{{ s.destination or '-' }}</strong></td>
+<td class="amount">₹ {{ s.amount or '0' }}</td>
+</tr>
+{% else %}
+<tr><td colspan="10" style="text-align:center;padding:40px;color:#777">No bookings found for the selected period.</td></tr>
+{% endfor %}
+{% if shipments %}
+<tr class="report-total">
+<td colspan="6">TOTAL</td>
+<td class="center">{{ total_packages }}</td>
+<td>{{ total_weight_text }} KG</td>
+<td>{{ total }} Docket</td>
+<td class="amount">₹ {{ total_amount_text }}</td>
+</tr>
+{% endif %}
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="card">
 <section class="card">
 
 
@@ -2723,10 +2861,13 @@ def admin():
         f"""
         SELECT COALESCE(
     SUM(
-        CASE
-            WHEN TRIM(weight::text) = '' THEN 0
-            ELSE CAST(weight AS NUMERIC)
-        END
+        COALESCE(
+            NULLIF(
+                regexp_replace(weight::text, '[^0-9.]', '', 'g'),
+                ''
+            )::NUMERIC,
+            0
+        )
     ),
     0
 ) AS total_weight
@@ -2845,6 +2986,8 @@ FROM shipments
         total_packages=total_packages,
         total_weight=total_weight,
         total_amount=total_amount,
+        total_weight_text=money_text(total_weight),
+        total_amount_text=money_text(total_amount),
 
         # Amount breakup
         paid_amount=paid_amount,
