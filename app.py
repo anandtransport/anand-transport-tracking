@@ -2390,15 +2390,13 @@ placeholder="Search GR / route / name..."
 
 <td>
 
-{% if s.freight_basis == 'To Pay' %}
-
 ₹ {{ s.amount or '0' }}
 
-{% else %}
+<br>
 
--
-
-{% endif %}
+<small>
+    {{ s.freight_basis or 'Not Set' }}
+</small>
 
 </td>
 
