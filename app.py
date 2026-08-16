@@ -3938,33 +3938,33 @@ def delete_shipment(sid):
 # =========================================================
 
 def generate_receipt_no():
-    """Generate the next Money Receipt number safely.
 
-    The prefix is generated internally, so the LIKE pattern is built
-    directly into the SQL statement. This avoids the psycopg2 string
-    formatting error seen on the Money Receipt page.
-    """
     con = db()
     cur = con.cursor()
 
-    try:
-        prefix = datetime.now().strftime("MR-%Y%m%d")
-        safe_prefix = prefix.replace("'", "''")
+    prefix = datetime.now().strftime(
+        "MR-%Y%m%d"
+    )
 
-        query = f"""
-            SELECT COUNT(*) AS c
-            FROM money_receipts
-            WHERE receipt_no LIKE '{safe_prefix}%'
+    cur.execute(
         """
+        SELECT COUNT(*) AS c
+        FROM money_receipts
+        WHERE receipt_no LIKE %s
+        """,
+        (
+            prefix + "%"
+        )
+    )
 
-        cur.execute(query)
-        row = cur.fetchone()
-        count = int(row["c"] or 0) + 1
+    count = cur.fetchone()["c"] + 1
 
-        return f"{prefix}-{count:04d}"
-    finally:
-        cur.close()
-        con.close()
+    cur.close()
+    con.close()
+
+    return (
+        f"{prefix}-{count:04d}"
+    )
 
 
 # =========================================================
@@ -4143,9 +4143,7 @@ def money_receipt():
         MONEY_RECEIPT_HTML,
         shipment=shipment,
         docket=docket,
-        # Do not generate a DB receipt number just to open the page.
-        # A number is generated only when the receipt is actually saved.
-        default_receipt=""
+        default_receipt=generate_receipt_no()
     )
 
 
