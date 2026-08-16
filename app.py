@@ -4656,7 +4656,7 @@ type="number"
 step="0.01"
 min="0"
 name="freight"
-value="0"
+value="{{ shipment.amount or '0' }}"
 >
 </div>
 
