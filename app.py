@@ -1,13 +1,22 @@
-from flask import Flask, render_template, render_template_string, request, redirect, url_for, session, jsonify, flash, send_file
+from flask import (
+    Flask, render_template, render_template_string,
+    request, redirect, url_for, session, jsonify,
+    flash, send_file
+)
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
 from io import BytesIO
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import (
+    getSampleStyleSheet, ParagraphStyle
+)
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer,
+    Table, TableStyle
+)
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -24,30 +33,64 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 
 TRANSPORT_NAME = "ANAND TRANSPORT CARRIER"
 TRANSPORT_GST = "08AOJPJ9966R1ZO"
-TRANSPORT_ADDRESS = "Oppsite Mishreelal Girls Collage, Dedansar Road, Jaisalmer Raj. - 345001"
+TRANSPORT_ADDRESS = (
+    "Opposite Mishreelal Girls College, "
+    "Dedansar Road, Jaisalmer Raj. - 345001"
+)
 TRANSPORT_HELPLINE = "+91 7410823003"
 
 
+# =========================================================
+# DATE HELPERS
+# =========================================================
+
 def format_date_ddmmyyyy(value):
-    """Convert stored dates to DD-MM-YYYY for display/PDF."""
     if not value:
         return "-"
+
     text = str(value).strip()
+
     for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
         try:
-            return datetime.strptime(text[:10], fmt).strftime("%d-%m-%Y")
+            return datetime.strptime(
+                text[:10], fmt
+            ).strftime("%d-%m-%Y")
         except ValueError:
             pass
+
     return text
 
 
+def money_value(value):
+    try:
+        if value is None or str(value).strip() == "":
+            return 0.0
+
+        return float(str(value).replace(",", "").strip())
+
+    except Exception:
+        return 0.0
+
+
+def money_text(value):
+    amount = money_value(value)
+
+    if amount == int(amount):
+        return f"{int(amount):,}"
+
+    return f"{amount:,.2f}"
+
+
 # =========================================================
-# DATABASE CONNECTION
+# DATABASE
 # =========================================================
 
 def db():
+
     if not DATABASE_URL:
-        raise Exception("DATABASE_URL environment variable is missing")
+        raise Exception(
+            "DATABASE_URL environment variable is missing"
+        )
 
     return psycopg2.connect(
         DATABASE_URL,
@@ -64,6 +107,10 @@ def init_db():
     con = db()
     cur = con.cursor()
 
+    # -------------------------
+    # USERS
+    # -------------------------
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users(
             id SERIAL PRIMARY KEY,
@@ -71,6 +118,10 @@ def init_db():
             password_hash TEXT NOT NULL
         );
     """)
+
+    # -------------------------
+    # SHIPMENTS
+    # -------------------------
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS shipments(
@@ -92,21 +143,37 @@ def init_db():
         );
     """)
 
-    # Add booking/PDF fields to existing databases without deleting old data.
+    # -------------------------
+    # EXTRA SHIPMENT COLUMNS
+    # -------------------------
+
     extra_columns = {
+
         "consignor_address": "TEXT",
         "consignor_contact": "TEXT",
+
         "consignee_address": "TEXT",
         "consignee_contact": "TEXT",
+
         "amount": "TEXT",
         "freight_basis": "TEXT",
+
         "goods_description": "TEXT"
     }
 
     for column, sql_type in extra_columns.items():
+
         cur.execute(
-            f"ALTER TABLE shipments ADD COLUMN IF NOT EXISTS {column} {sql_type}"
+            f"""
+            ALTER TABLE shipments
+            ADD COLUMN IF NOT EXISTS
+            {column} {sql_type}
+            """
         )
+
+    # -------------------------
+    # TRACKING EVENTS
+    # -------------------------
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS tracking_events(
@@ -116,59 +183,179 @@ def init_db():
             location TEXT,
             remark TEXT,
             event_time TEXT NOT NULL,
+
             FOREIGN KEY(shipment_id)
-                REFERENCES shipments(id)
-                ON DELETE CASCADE
+            REFERENCES shipments(id)
+            ON DELETE CASCADE
         );
     """)
 
-    cur.execute("SELECT 1 FROM users LIMIT 1")
+    # =====================================================
+    # MONEY RECEIPTS
+    # =====================================================
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS money_receipts(
+
+            id SERIAL PRIMARY KEY,
+
+            receipt_no TEXT UNIQUE NOT NULL,
+
+            shipment_id INTEGER NOT NULL,
+
+            docket TEXT NOT NULL,
+
+            freight TEXT DEFAULT '0',
+            handling TEXT DEFAULT '0',
+            door_delivery TEXT DEFAULT '0',
+            receipt_charge TEXT DEFAULT '0',
+            damage TEXT DEFAULT '0',
+            additional_charge TEXT DEFAULT '0',
+
+            total TEXT DEFAULT '0',
+
+            note TEXT,
+
+            created_at TEXT NOT NULL,
+
+            FOREIGN KEY(shipment_id)
+            REFERENCES shipments(id)
+            ON DELETE CASCADE
+        );
+    """)
+
+    # =====================================================
+    # DEFAULT ADMIN
+    # =====================================================
+
+    cur.execute(
+        "SELECT 1 FROM users LIMIT 1"
+    )
+
     if not cur.fetchone():
+
         cur.execute(
             """
-            INSERT INTO users(username, password_hash)
+            INSERT INTO users(
+                username,
+                password_hash
+            )
             VALUES(%s,%s)
             """,
-            ("admin", generate_password_hash("admin123"))
+            (
+                "admin",
+                generate_password_hash("admin123")
+            )
         )
 
-    # Keep the existing demo shipment only when the database is empty.
-    cur.execute("SELECT 1 FROM shipments LIMIT 1")
+    # =====================================================
+    # DEMO SHIPMENT
+    # =====================================================
+
+    cur.execute(
+        "SELECT 1 FROM shipments LIMIT 1"
+    )
+
     if not cur.fetchone():
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        now = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
         cur.execute(
             """
             INSERT INTO shipments
-            (docket, booking_date, source, destination, consignor, consignee,
-             packages, weight, status, location, expected_delivery, remark,
-             created_at, updated_at)
-            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            (
+                docket,
+                booking_date,
+                source,
+                destination,
+                consignor,
+                consignee,
+                packages,
+                weight,
+                status,
+                location,
+                expected_delivery,
+                remark,
+                created_at,
+                updated_at
+            )
+            VALUES(
+                %s,%s,%s,%s,%s,%s,%s,%s,%s,
+                %s,%s,%s,%s,%s
+            )
             RETURNING id
             """,
             (
-                "AT100001", "2026-08-10", "Jaisalmer", "Jaipur",
-                "ABC Industries", "XYZ Traders", 2, "35 kg",
-                "In Transit", "Jodhpur", "2026-08-16",
-                "Shipment reached Jodhpur hub.", now, now
+                "AT100001",
+                "2026-08-10",
+                "Jaisalmer",
+                "Jaipur",
+                "ABC Industries",
+                "XYZ Traders",
+                2,
+                "35 kg",
+                "In Transit",
+                "Jodhpur",
+                "2026-08-16",
+                "Shipment reached Jodhpur hub.",
+                now,
+                now
             )
         )
+
         sid = cur.fetchone()["id"]
+
         demo_events = [
-            ("Booked", "Jaisalmer", "Shipment booked.", "2026-08-10 10:20:00"),
-            ("Picked Up", "Jaisalmer", "Shipment picked up.", "2026-08-10 14:30:00"),
-            ("In Transit", "Jodhpur", "Shipment reached Jodhpur hub.", "2026-08-13 08:45:00")
+
+            (
+                "Booked",
+                "Jaisalmer",
+                "Shipment booked.",
+                "2026-08-10 10:20:00"
+            ),
+
+            (
+                "Picked Up",
+                "Jaisalmer",
+                "Shipment picked up.",
+                "2026-08-10 14:30:00"
+            ),
+
+            (
+                "In Transit",
+                "Jodhpur",
+                "Shipment reached Jodhpur hub.",
+                "2026-08-13 08:45:00"
+            )
         ]
-        for status, location, remark, event_time in demo_events:
+
+        for event in demo_events:
+
             cur.execute(
                 """
                 INSERT INTO tracking_events
-                (shipment_id, status, location, remark, event_time)
+                (
+                    shipment_id,
+                    status,
+                    location,
+                    remark,
+                    event_time
+                )
                 VALUES(%s,%s,%s,%s,%s)
                 """,
-                (sid, status, location, remark, event_time)
+                (
+                    sid,
+                    event[0],
+                    event[1],
+                    event[2],
+                    event[3]
+                )
             )
 
     con.commit()
+
     cur.close()
     con.close()
 
@@ -183,6 +370,7 @@ def login_required(f):
     def wrapped(*args, **kwargs):
 
         if not session.get("admin_id"):
+
             return redirect(
                 url_for("admin_login")
             )
@@ -213,13 +401,10 @@ def about():
 
 
 # =========================================================
-# TRACK FORM
+# TRACK
 # =========================================================
 
-@app.route(
-    "/track",
-    methods=["POST"]
-)
+@app.route("/track", methods=["POST"])
 def track():
 
     docket = request.form.get(
@@ -235,19 +420,11 @@ def track():
     )
 
 
-# =========================================================
-# CUSTOMER TRACKING PAGE
-# =========================================================
-
 @app.route("/tracking/<docket>")
 def tracking(docket):
 
     con = db()
     cur = con.cursor()
-
-    # -------------------------
-    # FIND SHIPMENT
-    # -------------------------
 
     cur.execute(
         """
@@ -263,13 +440,6 @@ def tracking(docket):
     events = []
 
     if shipment:
-
-        # IMPORTANT:
-        # OLD -> NEW
-        #
-        # Booked first
-        # Delivered last
-        #
 
         cur.execute(
             """
@@ -291,6 +461,70 @@ def tracking(docket):
         shipment=shipment,
         events=events,
         docket=docket
+    )
+
+
+# =========================================================
+# API TRACK
+# =========================================================
+
+@app.route("/api/track/<docket>")
+def api_track(docket):
+
+    con = db()
+    cur = con.cursor()
+
+    cur.execute(
+        """
+        SELECT *
+        FROM shipments
+        WHERE lower(docket)=lower(%s)
+        """,
+        (docket,)
+    )
+
+    shipment = cur.fetchone()
+
+    if not shipment:
+
+        cur.close()
+        con.close()
+
+        return jsonify(
+            {
+                "found": False
+            }
+        ), 404
+
+    cur.execute(
+        """
+        SELECT
+            id,
+            status,
+            location,
+            remark,
+            event_time
+        FROM tracking_events
+        WHERE shipment_id=%s
+        ORDER BY event_time ASC, id ASC
+        """,
+        (shipment["id"],)
+    )
+
+    events = cur.fetchall()
+
+    cur.close()
+    con.close()
+
+    return jsonify(
+        {
+            "found": True,
+            "shipment": dict(shipment),
+            "history": [
+                dict(event)
+                for event in events
+            ]
+        }
     )
 
 
@@ -372,67 +606,137 @@ def logout():
 
 
 # =========================================================
-# CHANGE ADMIN USERNAME / PASSWORD
+# CHANGE CREDENTIALS
 # =========================================================
 
-@app.route("/admin/change-credentials", methods=["GET", "POST"])
+@app.route(
+    "/admin/change-credentials",
+    methods=["GET", "POST"]
+)
 def change_credentials():
 
     if request.method == "POST":
 
-        current_username = request.form.get("current_username", "").strip()
-        current_password = request.form.get("current_password", "")
-        new_username = request.form.get("new_username", "").strip()
-        new_password = request.form.get("new_password", "")
-        confirm_password = request.form.get("confirm_password", "")
+        current_username = request.form.get(
+            "current_username",
+            ""
+        ).strip()
+
+        current_password = request.form.get(
+            "current_password",
+            ""
+        )
+
+        new_username = request.form.get(
+            "new_username",
+            ""
+        ).strip()
+
+        new_password = request.form.get(
+            "new_password",
+            ""
+        )
+
+        confirm_password = request.form.get(
+            "confirm_password",
+            ""
+        )
 
         if not current_username or not new_username or not new_password:
-            flash("Username and password are required.")
-            return redirect(url_for("change_credentials"))
+
+            flash(
+                "Username and password are required."
+            )
+
+            return redirect(
+                url_for("change_credentials")
+            )
 
         if len(new_password) < 6:
-            flash("New password must be at least 6 characters long.")
-            return redirect(url_for("change_credentials"))
+
+            flash(
+                "New password must be at least 6 characters long."
+            )
+
+            return redirect(
+                url_for("change_credentials")
+            )
 
         if new_password != confirm_password:
-            flash("New password and confirm password do not match.")
-            return redirect(url_for("change_credentials"))
+
+            flash(
+                "New password and confirm password do not match."
+            )
+
+            return redirect(
+                url_for("change_credentials")
+            )
 
         con = db()
         cur = con.cursor()
 
         try:
+
             cur.execute(
-                "SELECT * FROM users WHERE username=%s",
+                """
+                SELECT *
+                FROM users
+                WHERE username=%s
+                """,
                 (current_username,)
             )
+
             user = cur.fetchone()
 
             if not user or not check_password_hash(
                 user["password_hash"],
                 current_password
             ):
-                flash("Current password is incorrect.")
-                return redirect(url_for("change_credentials"))
+
+                flash(
+                    "Current password is incorrect."
+                )
+
+                return redirect(
+                    url_for("change_credentials")
+                )
 
             cur.execute(
-                "SELECT id FROM users WHERE username=%s AND id<>%s",
-                (new_username, user["id"])
+                """
+                SELECT id
+                FROM users
+                WHERE username=%s
+                AND id<>%s
+                """,
+                (
+                    new_username,
+                    user["id"]
+                )
             )
 
             if cur.fetchone():
-                flash("This username is already in use.")
-                return redirect(url_for("change_credentials"))
+
+                flash(
+                    "This username is already in use."
+                )
+
+                return redirect(
+                    url_for("change_credentials")
+                )
 
             cur.execute(
                 """
                 UPDATE users
-                SET username=%s, password_hash=%s
+                SET
+                    username=%s,
+                    password_hash=%s
                 WHERE id=%s
                 """,
                 (
                     new_username,
-                    generate_password_hash(new_password),
+                    generate_password_hash(
+                        new_password
+                    ),
                     user["id"]
                 )
             )
@@ -441,301 +745,1823 @@ def change_credentials():
 
             session["admin_username"] = new_username
 
-            flash("Admin username and password changed successfully.")
-            return redirect(url_for("admin"))
+            flash(
+                "Admin username and password changed successfully."
+            )
+
+            return redirect(
+                url_for("admin")
+            )
 
         except Exception:
+
             con.rollback()
-            flash("Unable to change login details. Please try again.")
-            return redirect(url_for("change_credentials"))
+
+            flash(
+                "Unable to change login details."
+            )
+
+            return redirect(
+                url_for("change_credentials")
+            )
 
         finally:
+
             cur.close()
             con.close()
 
     return render_template_string(
         """
-        <!DOCTYPE html>
+        <!doctype html>
         <html>
         <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Change Admin Login</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    background: #f5f5f5;
-                    margin: 0;
-                    padding: 40px 20px;
-                }
-                .box {
-                    max-width: 500px;
-                    margin: auto;
-                    background: white;
-                    padding: 30px;
-                    border-radius: 12px;
-                    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-                }
-                h2 {
-                    margin-top: 0;
-                }
-                label {
-                    display: block;
-                    margin-top: 15px;
-                    margin-bottom: 6px;
-                    font-weight: bold;
-                }
-                input {
-                    width: 100%;
-                    box-sizing: border-box;
-                    padding: 11px;
-                    border: 1px solid #ccc;
-                    border-radius: 6px;
-                    font-size: 15px;
-                }
-                button {
-                    margin-top: 22px;
-                    padding: 11px 18px;
-                    border: none;
-                    border-radius: 6px;
-                    background: #c00;
-                    color: white;
-                    font-size: 15px;
-                    cursor: pointer;
-                }
-                .back {
-                    display: inline-block;
-                    margin-left: 10px;
-                    text-decoration: none;
-                }
-                .note {
-                    color: #555;
-                    font-size: 14px;
-                }
-            </style>
+        <meta charset="UTF-8">
+        <meta name="viewport"
+              content="width=device-width,initial-scale=1">
+
+        <title>Change Admin Login</title>
+
+        <style>
+        body{
+            font-family:Arial;
+            background:#f5f5f5;
+            padding:40px 20px;
+        }
+
+        .box{
+            max-width:500px;
+            margin:auto;
+            background:white;
+            padding:30px;
+            border-radius:14px;
+            box-shadow:0 5px 20px #0002;
+        }
+
+        label{
+            display:block;
+            margin-top:15px;
+            margin-bottom:6px;
+            font-weight:bold;
+        }
+
+        input{
+            width:100%;
+            padding:11px;
+            box-sizing:border-box;
+            border:1px solid #ccc;
+            border-radius:7px;
+        }
+
+        button{
+            margin-top:20px;
+            padding:12px 18px;
+            background:#b00000;
+            color:white;
+            border:0;
+            border-radius:7px;
+            cursor:pointer;
+        }
+
+        .back{
+            margin-left:10px;
+        }
+        </style>
         </head>
+
         <body>
-            <div class="box">
-                <h2>Change Admin Login</h2>
-                <p class="note">Enter your current password and choose a new username and password.</p>
 
-                <form method="POST">
-                    <label>Current Username</label>
-                    <input type="text" name="current_username" value="{{ session.get('admin_username', '') }}" required>
+        <div class="box">
 
-                    <label>Current Password</label>
-                    <input type="password" name="current_password" required>
+        <h2>Change Admin Login</h2>
 
-                    <label>New Username</label>
-                    <input type="text" name="new_username" value="{{ session.get('admin_username', '') }}" required>
+        <form method="POST">
 
-                    <label>New Password</label>
-                    <input type="password" name="new_password" minlength="6" required>
+        <label>Current Username</label>
+        <input
+            name="current_username"
+            value="{{ session.get('admin_username','') }}"
+            required
+        >
 
-                    <label>Confirm New Password</label>
-                    <input type="password" name="confirm_password" minlength="6" required>
+        <label>Current Password</label>
+        <input
+            type="password"
+            name="current_password"
+            required
+        >
 
-                    <button type="submit">Save New Login Details</button>
-                    <a class="back" href="{{ url_for('admin') }}">Back to Admin</a>
-                </form>
-            </div>
+        <label>New Username</label>
+        <input
+            name="new_username"
+            value="{{ session.get('admin_username','') }}"
+            required
+        >
+
+        <label>New Password</label>
+        <input
+            type="password"
+            name="new_password"
+            minlength="6"
+            required
+        >
+
+        <label>Confirm New Password</label>
+        <input
+            type="password"
+            name="confirm_password"
+            minlength="6"
+            required
+        >
+
+        <button>
+            Save New Login Details
+        </button>
+
+        <a
+            class="back"
+            href="{{ url_for('admin') }}"
+        >
+            Back
+        </a>
+
+        </form>
+
+        </div>
+
         </body>
         </html>
         """
     )
 
 
-
 # =========================================================
-# BOOKING / PDF HELPERS
+# GENERATE GR NUMBER
 # =========================================================
 
 def generate_gr_no():
+
     con = db()
     cur = con.cursor()
-    prefix = datetime.now().strftime("ATC-%Y%m%d")
-    cur.execute(
-        "SELECT COUNT(*) AS c FROM shipments WHERE docket LIKE %s",
-        (prefix + "%",)
+
+    prefix = datetime.now().strftime(
+        "ATC-%Y%m%d"
     )
+
+    cur.execute(
+        """
+        SELECT COUNT(*) AS c
+        FROM shipments
+        WHERE docket LIKE %s
+        """,
+        (
+            prefix + "%",
+        )
+    )
+
     count = cur.fetchone()["c"] + 1
+
     cur.close()
     con.close()
+
     return f"{prefix}-{count:04d}"
 
 
+# =========================================================
+# PDF HELPERS
+# =========================================================
+
 def _pdf_paragraph(text, style):
+
     import html
-    return Paragraph(html.escape(str(text or "")), style)
+
+    return Paragraph(
+        html.escape(
+            str(text or "")
+        ),
+        style
+    )
 
 
-@app.route("/admin/shipment/<int:sid>/pdf")
+def pdf_header(story, styles):
+
+    title = ParagraphStyle(
+        "ATCTitle",
+        parent=styles["Title"],
+        fontSize=20,
+        leading=23,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#b00000"),
+        spaceAfter=2
+    )
+
+    center = ParagraphStyle(
+        "ATCCenter",
+        parent=styles["Normal"],
+        fontSize=8.5,
+        leading=11,
+        alignment=TA_CENTER
+    )
+
+    logo = Table(
+        [
+            [
+                Paragraph(
+                    "<b>ATC</b>",
+                    ParagraphStyle(
+                        "LogoText",
+                        fontSize=17,
+                        textColor=colors.white,
+                        alignment=TA_CENTER
+                    )
+                )
+            ]
+        ],
+        colWidths=[48],
+        rowHeights=[32]
+    )
+
+    logo.setStyle(
+        TableStyle([
+            (
+                "BACKGROUND",
+                (0, 0),
+                (-1, -1),
+                colors.HexColor("#b00000")
+            ),
+            (
+                "BOX",
+                (0, 0),
+                (-1, -1),
+                2,
+                colors.HexColor("#f0a900")
+            ),
+            (
+                "VALIGN",
+                (0, 0),
+                (-1, -1),
+                "MIDDLE"
+            )
+        ])
+    )
+
+    header = Table(
+        [
+            [
+                logo,
+                [
+                    Paragraph(
+                        TRANSPORT_NAME,
+                        title
+                    ),
+                    Paragraph(
+                        f"GST ID: {TRANSPORT_GST} | "
+                        f"Helpline: {TRANSPORT_HELPLINE}",
+                        center
+                    ),
+                    Paragraph(
+                        TRANSPORT_ADDRESS,
+                        center
+                    )
+                ]
+            ]
+        ],
+        colWidths=[60, 464]
+    )
+
+    header.setStyle(
+        TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 3),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+        ])
+    )
+
+    story.append(header)
+
+    story.append(
+        Spacer(1, 9)
+    )
+
+
+# =========================================================
+# SHIPMENT PDF
+# =========================================================
+
+@app.route(
+    "/admin/shipment/<int:sid>/pdf"
+)
 @login_required
 def shipment_pdf(sid):
+
     con = db()
     cur = con.cursor()
-    cur.execute("SELECT * FROM shipments WHERE id=%s", (sid,))
+
+    cur.execute(
+        """
+        SELECT *
+        FROM shipments
+        WHERE id=%s
+        """,
+        (sid,)
+    )
+
     shipment = cur.fetchone()
+
     cur.close()
     con.close()
 
     if not shipment:
+
         return "Shipment not found", 404
 
     buffer = BytesIO()
+
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=28, leftMargin=28,
-        topMargin=24, bottomMargin=30
+        buffer,
+        pagesize=A4,
+        rightMargin=28,
+        leftMargin=28,
+        topMargin=24,
+        bottomMargin=30
     )
+
     styles = getSampleStyleSheet()
-    title = ParagraphStyle("TitleATC2", parent=styles["Title"], fontSize=19, leading=22,
-                           alignment=TA_CENTER, textColor=colors.HexColor("#b00000"), spaceAfter=3)
-    center = ParagraphStyle("CenterATC2", parent=styles["Normal"], fontSize=8.5,
-                            leading=11, alignment=TA_CENTER)
-    heading = ParagraphStyle("HeadingATC2", parent=styles["Heading2"], fontSize=10.5,
-                             leading=13, textColor=colors.HexColor("#b00000"), spaceBefore=5, spaceAfter=4)
-    normal = ParagraphStyle("NormalATC2", parent=styles["Normal"], fontSize=8.7, leading=11)
-    small = ParagraphStyle("SmallATC2", parent=styles["Normal"], fontSize=7.8, leading=9.5)
-    terms = ParagraphStyle("TermsATC2", parent=styles["Normal"], fontSize=7.3, leading=9)
-    right = ParagraphStyle("RightATC2", parent=normal, alignment=TA_RIGHT)
 
-    booking_date = format_date_ddmmyyyy(shipment.get("booking_date"))
-    expected_date = format_date_ddmmyyyy(shipment.get("expected_delivery"))
-    freight_basis = shipment.get("freight_basis") or "To Pay"
-    goods = shipment.get("goods_description") or "-"
+    heading = ParagraphStyle(
+        "PDFHeading",
+        parent=styles["Heading2"],
+        fontSize=10.5,
+        leading=13,
+        textColor=colors.HexColor("#b00000"),
+        spaceBefore=4,
+        spaceAfter=4
+    )
 
-    story = [
-        Paragraph(TRANSPORT_NAME, title),
-        Paragraph(f"GST ID: {TRANSPORT_GST} | Helpline: {TRANSPORT_HELPLINE}", center),
-        Paragraph(TRANSPORT_ADDRESS, center),
-        Spacer(1, 7),
-        Paragraph("CONSIGNMENT / GR BOOKING RECEIPT", heading),
-    ]
+    normal = ParagraphStyle(
+        "PDFNormal",
+        parent=styles["Normal"],
+        fontSize=8.7,
+        leading=11
+    )
 
-    info = [
-        [_pdf_paragraph("GR / Consignment No.", normal), _pdf_paragraph(shipment["docket"], normal),
-         _pdf_paragraph("Booking Date", normal), _pdf_paragraph(booking_date, normal)],
-        [_pdf_paragraph("Expected Delivery", normal), _pdf_paragraph(expected_date, normal),
-         _pdf_paragraph("Status", normal), _pdf_paragraph(shipment["status"], normal)],
-        [_pdf_paragraph("From", normal), _pdf_paragraph(shipment["source"], normal),
-         _pdf_paragraph("To", normal), _pdf_paragraph(shipment["destination"], normal)],
-        [_pdf_paragraph("Packages", normal), _pdf_paragraph(shipment.get("packages"), normal),
-         _pdf_paragraph("Weight", normal), _pdf_paragraph(shipment.get("weight") or "-", normal)],
-        [_pdf_paragraph("Freight Basis", normal), _pdf_paragraph(freight_basis, normal),
-         _pdf_paragraph("Amount", normal), _pdf_paragraph(shipment.get("amount") or "-", normal)],
-    ]
-    t = Table(info, colWidths=[100, 174, 92, 157])
-    t.setStyle(TableStyle([
-        ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cccccc")),
-        ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#f7f7f7")),
-        ("BACKGROUND", (2,0), (2,-1), colors.HexColor("#f7f7f7")),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-        ("LEFTPADDING", (0,0), (-1,-1), 5), ("RIGHTPADDING", (0,0), (-1,-1), 5),
-        ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-    ]))
+    small = ParagraphStyle(
+        "PDFSmall",
+        parent=styles["Normal"],
+        fontSize=7.8,
+        leading=9.5
+    )
+
+    right = ParagraphStyle(
+        "PDFRight",
+        parent=normal,
+        alignment=TA_RIGHT
+    )
+
+    story = []
+
+    pdf_header(
+        story,
+        styles
+    )
+
+    story.append(
+        Paragraph(
+            "CONSIGNMENT / GR BOOKING RECEIPT",
+            heading
+        )
+    )
+
+    booking_date = format_date_ddmmyyyy(
+        shipment.get("booking_date")
+    )
+
+    expected_date = format_date_ddmmyyyy(
+        shipment.get("expected_delivery")
+    )
+
+    freight_basis = (
+        shipment.get("freight_basis")
+        or "To Pay"
+    )
+
+    # =====================================================
+    # AMOUNT RULE
+    #
+    # To Pay -> amount shown
+    # Paid/TBB -> amount hidden
+    # =====================================================
+
+    if freight_basis == "To Pay":
+
+        info = [
+
+            [
+                _pdf_paragraph(
+                    "GR / Consignment No.",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment["docket"],
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Booking Date",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    booking_date,
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "Expected Delivery",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    expected_date,
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Status",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment["status"],
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "From",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment["source"],
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "To",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment["destination"],
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "Packages",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment.get("packages"),
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Weight",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment.get("weight") or "-",
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "Freight Basis",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    freight_basis,
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Amount",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "₹ " + money_text(
+                        shipment.get("amount")
+                    ),
+                    normal
+                )
+            ]
+        ]
+
+    else:
+
+        info = [
+
+            [
+                _pdf_paragraph(
+                    "GR / Consignment No.",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment["docket"],
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Booking Date",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    booking_date,
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "Expected Delivery",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    expected_date,
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Status",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment["status"],
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "From",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment["source"],
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "To",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment["destination"],
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "Packages",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment.get("packages"),
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Weight",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    shipment.get("weight") or "-",
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "Freight Basis",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    freight_basis,
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Amount",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "-",
+                    normal
+                )
+            ]
+        ]
+
+    t = Table(
+        info,
+        colWidths=[
+            100,
+            174,
+            92,
+            157
+        ]
+    )
+
+    t.setStyle(
+        TableStyle([
+            (
+                "GRID",
+                (0, 0),
+                (-1, -1),
+                0.5,
+                colors.HexColor("#cccccc")
+            ),
+
+            (
+                "BACKGROUND",
+                (0, 0),
+                (0, -1),
+                colors.HexColor("#f7f7f7")
+            ),
+
+            (
+                "BACKGROUND",
+                (2, 0),
+                (2, -1),
+                colors.HexColor("#f7f7f7")
+            ),
+
+            (
+                "VALIGN",
+                (0, 0),
+                (-1, -1),
+                "TOP"
+            ),
+
+            (
+                "LEFTPADDING",
+                (0, 0),
+                (-1, -1),
+                5
+            ),
+
+            (
+                "RIGHTPADDING",
+                (0, 0),
+                (-1, -1),
+                5
+            ),
+
+            (
+                "TOPPADDING",
+                (0, 0),
+                (-1, -1),
+                5
+            ),
+
+            (
+                "BOTTOMPADDING",
+                (0, 0),
+                (-1, -1),
+                5
+            )
+        ])
+    )
+
     story.append(t)
 
-    party = [
-        [Paragraph("CONSIGNOR", heading), Paragraph("CONSIGNEE", heading)],
-        [_pdf_paragraph(f"Name: {shipment.get('consignor') or '-'}", normal),
-         _pdf_paragraph(f"Name: {shipment.get('consignee') or '-'}", normal)],
-        [_pdf_paragraph(f"Address: {shipment.get('consignor_address') or '-'}", small),
-         _pdf_paragraph(f"Address: {shipment.get('consignee_address') or '-'}", small)],
-        [_pdf_paragraph(f"Contact: {shipment.get('consignor_contact') or '-'}", normal),
-         _pdf_paragraph(f"Contact: {shipment.get('consignee_contact') or '-'}", normal)],
-    ]
-    pt = Table(party, colWidths=[262, 262])
-    pt.setStyle(TableStyle([
-        ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cccccc")),
-        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#f7f7f7")),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-        ("LEFTPADDING", (0,0), (-1,-1), 6), ("RIGHTPADDING", (0,0), (-1,-1), 6),
-        ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-    ]))
-    story += [pt, Spacer(1, 7)]
-
-    goods_table = Table([
-        [Paragraph("GOODS DESCRIPTION", heading)],
-        [_pdf_paragraph(goods, normal)]
-    ], colWidths=[524])
-    goods_table.setStyle(TableStyle([
-        ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cccccc")),
-        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#f7f7f7")),
-        ("LEFTPADDING", (0,0), (-1,-1), 6), ("RIGHTPADDING", (0,0), (-1,-1), 6),
-        ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-    ]))
-    story += [goods_table, Spacer(1, 7)]
-
-    story += [
-        Paragraph("REMARKS", heading),
-        _pdf_paragraph(shipment.get("remark") or "-", normal),
-        Spacer(1, 7),
-        Paragraph("TERMS & CONDITIONS", heading),
-    ]
-    terms_text = (
-        "1. Goods are accepted for transportation subject to applicable transport rules and conditions. "
-        "2. Consignor is responsible for correct packing, description, quantity, weight and declaration of goods. "
-        "3. Delivery is subject to route, service availability and receipt of necessary documents. "
-        "4. Freight and other charges are payable according to the selected Freight Basis. "
-        "5. Transit time is indicative and may vary due to operational, weather, traffic or other unavoidable reasons. "
-        "6. Any shortage or damage should be reported at the time of delivery and acknowledged on the delivery record. "
-        "7. The carrier shall not be responsible for prohibited, undeclared or improperly packed goods. "
-        "8. This receipt should be retained by the customer for reference and delivery purposes."
+    story.append(
+        Spacer(1, 7)
     )
-    terms_box = Table([[Paragraph(terms_text, terms)]], colWidths=[524])
-    terms_box.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 0.5, colors.HexColor("#cccccc")),
-        ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#fafafa")),
-        ("LEFTPADDING", (0,0), (-1,-1), 7), ("RIGHTPADDING", (0,0), (-1,-1), 7),
-        ("TOPPADDING", (0,0), (-1,-1), 6), ("BOTTOMPADDING", (0,0), (-1,-1), 6),
-    ]))
-    story += [terms_box, Spacer(1, 14), Paragraph("For ANAND TRANSPORT CARRIER", right)]
+
+    # =====================================================
+    # CONSIGNOR / CONSIGNEE
+    # =====================================================
+
+    party = [
+
+        [
+            Paragraph(
+                "CONSIGNOR",
+                heading
+            ),
+
+            Paragraph(
+                "CONSIGNEE",
+                heading
+            )
+        ],
+
+        [
+            _pdf_paragraph(
+                "Name: " +
+                str(
+                    shipment.get("consignor")
+                    or "-"
+                ),
+                normal
+            ),
+
+            _pdf_paragraph(
+                "Name: " +
+                str(
+                    shipment.get("consignee")
+                    or "-"
+                ),
+                normal
+            )
+        ],
+
+        [
+            _pdf_paragraph(
+                "Address: " +
+                str(
+                    shipment.get(
+                        "consignor_address"
+                    ) or "-"
+                ),
+                small
+            ),
+
+            _pdf_paragraph(
+                "Address: " +
+                str(
+                    shipment.get(
+                        "consignee_address"
+                    ) or "-"
+                ),
+                small
+            )
+        ],
+
+        [
+            _pdf_paragraph(
+                "Contact: " +
+                str(
+                    shipment.get(
+                        "consignor_contact"
+                    ) or "-"
+                ),
+                normal
+            ),
+
+            _pdf_paragraph(
+                "Contact: " +
+                str(
+                    shipment.get(
+                        "consignee_contact"
+                    ) or "-"
+                ),
+                normal
+            )
+        ]
+    ]
+
+    pt = Table(
+        party,
+        colWidths=[
+            262,
+            262
+        ]
+    )
+
+    pt.setStyle(
+        TableStyle([
+            (
+                "GRID",
+                (0, 0),
+                (-1, -1),
+                0.5,
+                colors.HexColor("#cccccc")
+            ),
+
+            (
+                "BACKGROUND",
+                (0, 0),
+                (-1, 0),
+                colors.HexColor("#f7f7f7")
+            ),
+
+            (
+                "VALIGN",
+                (0, 0),
+                (-1, -1),
+                "TOP"
+            ),
+
+            (
+                "LEFTPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            ),
+
+            (
+                "RIGHTPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            ),
+
+            (
+                "TOPPADDING",
+                (0, 0),
+                (-1, -1),
+                5
+            ),
+
+            (
+                "BOTTOMPADDING",
+                (0, 0),
+                (-1, -1),
+                5
+            )
+        ])
+    )
+
+    story.append(pt)
+
+    story.append(
+        Spacer(1, 7)
+    )
+
+    # =====================================================
+    # GOODS
+    # =====================================================
+
+    goods = (
+        shipment.get("goods_description")
+        or "-"
+    )
+
+    goods_table = Table(
+        [
+            [
+                Paragraph(
+                    "GOODS DESCRIPTION",
+                    heading
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    goods,
+                    normal
+                )
+            ]
+        ],
+        colWidths=[524]
+    )
+
+    goods_table.setStyle(
+        TableStyle([
+            (
+                "GRID",
+                (0, 0),
+                (-1, -1),
+                0.5,
+                colors.HexColor("#cccccc")
+            ),
+
+            (
+                "BACKGROUND",
+                (0, 0),
+                (-1, 0),
+                colors.HexColor("#f7f7f7")
+            ),
+
+            (
+                "LEFTPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            ),
+
+            (
+                "RIGHTPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            ),
+
+            (
+                "TOPPADDING",
+                (0, 0),
+                (-1, -1),
+                4
+            ),
+
+            (
+                "BOTTOMPADDING",
+                (0, 0),
+                (-1, -1),
+                4
+            )
+        ])
+    )
+
+    story.append(goods_table)
+
+    story.append(
+        Spacer(1, 8)
+    )
+
+    # =====================================================
+    # REMARKS
+    # =====================================================
+
+    story.append(
+        Paragraph(
+            "REMARKS",
+            heading
+        )
+    )
+
+    story.append(
+        _pdf_paragraph(
+            shipment.get("remark") or "-",
+            normal
+        )
+    )
+
+    story.append(
+        Spacer(1, 20)
+    )
+
+    story.append(
+        Paragraph(
+            "For ANAND TRANSPORT CARRIER",
+            right
+        )
+    )
 
     doc.build(story)
+
     buffer.seek(0)
-    filename = f"{shipment['docket']}_GR.pdf"
-    return send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/pdf")
 
+    filename = (
+        f"{shipment['docket']}_GR.pdf"
+    )
 
-ADMIN_DASHBOARD_HTML = r'''
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin Dashboard - Anand Transport</title>
-<style>
-:root{--red:#b40000;--red2:#d00000;--gold:#f0a900;--bg:#f5f7fb;--ink:#172033;--muted:#6b7280;--card:#fff;--line:#e6e8ef;--green:#14804a;--blue:#1769aa}
-*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
-.nav{background:#fff;border-bottom:3px solid var(--gold);height:78px;display:flex;align-items:center;justify-content:space-between;padding:0 4%;position:sticky;top:0;z-index:5}.brand{display:flex;align-items:center;gap:12px}.logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#e51b00,#ffb000);display:grid;place-items:center;color:#fff;font-weight:900;font-size:20px;box-shadow:0 3px 8px #bbb}.brand h1{font-size:21px;margin:0;color:#b00000}.brand small{display:block;margin-top:2px;color:#555}.navlinks{display:flex;gap:22px;align-items:center}.navlinks a{color:#161616;text-decoration:none;font-weight:700}.navlinks a:hover{color:var(--red)}
-.wrap{max-width:1450px;margin:0 auto;padding:30px 4% 50px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:24px}.top h2{margin:0;font-size:28px}.top p{margin:7px 0 0;color:var(--muted)}.actions{display:flex;gap:10px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;gap:7px;text-decoration:none;border:0;border-radius:9px;padding:11px 15px;font-weight:800;cursor:pointer}.primary{background:var(--red);color:#fff}.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}.danger{background:#fff0f0;color:#a00000;border:1px solid #ffd0d0}.gold{background:#fff4cf;color:#7b5200;border:1px solid #f2d88c}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 3px 12px #00000008}.stat .label{color:var(--muted);font-size:13px;font-weight:700}.stat .num{font-size:29px;font-weight:900;margin-top:8px}.red{color:var(--red)}.blue{color:var(--blue)}.green{color:var(--green)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 3px 12px #00000008;overflow:hidden}.cardhead{padding:17px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.cardhead h3{margin:0}.search{padding:9px 12px;border:1px solid #d8dce5;border-radius:8px;min-width:230px}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1050px}th,td{text-align:left;padding:13px 12px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}th{background:#fafafa;color:#596174;font-size:12px;text-transform:uppercase}tr:hover td{background:#fcfcfd}.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;background:#eee}.badge.booked{background:#fff0cf;color:#8a5a00}.badge.transit{background:#e7f1ff;color:#125a9c}.badge.delivered{background:#e5f8ee;color:#08703c}.actions-cell{display:flex;gap:6px;flex-wrap:wrap}.mini{padding:7px 9px;border-radius:7px;font-size:11px;font-weight:800;text-decoration:none;border:1px solid var(--line);background:#fff;color:#222}.mini.pdf{background:#fff4cf;color:#775000}.mini.edit{background:#e9f3ff;color:#14598f}.mini.delete{background:#fff0f0;color:#a00000}.empty{padding:40px;text-align:center;color:var(--muted)}
-.footer{margin-top:30px;text-align:center;color:#777;font-size:12px}.flash{background:#e9f8ef;color:#126b3d;border:1px solid #bde8ce;border-radius:10px;padding:12px 15px;margin-bottom:18px;font-weight:700}
-@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.top{align-items:flex-start;flex-direction:column}.navlinks{gap:10px;font-size:12px}.brand h1{font-size:17px}}@media(max-width:560px){.stats{grid-template-columns:1fr}.nav{height:auto;padding:14px 4%;gap:12px;align-items:flex-start}.navlinks{flex-wrap:wrap}.wrap{padding-top:20px}}
-</style></head><body>
-<header class="nav"><div class="brand"><div class="logo">ATC</div><div><h1>Anand Transport Company</h1><small>Reliable • Fast • Nationwide</small></div></div><nav class="navlinks"><a href="/">Home</a><a href="/">Track Shipment</a><a href="/about">About Us</a><a href="{{ url_for('change_credentials') }}">Change Login</a><a href="{{ url_for('logout') }}">Logout</a></nav></header>
-<main class="wrap"><div class="top"><div><h2>Admin Dashboard</h2><p>Welcome, {{ username }}. Manage bookings, shipments and tracking.</p></div><div class="actions"><a class="btn primary" href="{{ url_for('new_shipment') }}">＋ New Booking</a><a class="btn secondary" href="{{ url_for('admin') }}">↻ Refresh</a></div></div>
-{% with messages=get_flashed_messages() %}{% if messages %}{% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}{% endif %}{% endwith %}
-<section class="stats"><div class="stat"><div class="label">TOTAL SHIPMENTS</div><div class="num">{{ total }}</div></div><div class="stat"><div class="label">BOOKED</div><div class="num red">{{ booked }}</div></div><div class="stat"><div class="label">IN TRANSIT</div><div class="num blue">{{ in_transit }}</div></div><div class="stat"><div class="label">DELIVERED</div><div class="num green">{{ delivered }}</div></div></section>
-<section class="card"><div class="cardhead"><h3>Shipment Management</h3><input class="search" id="search" placeholder="Search GR / route / name..."></div><div class="tablewrap"><table id="shipTable"><thead><tr><th>GR / Docket</th><th>Route</th><th>Consignor</th><th>Consignee</th><th>PKG</th><th>Weight</th><th>Amount</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead><tbody>{% for s in shipments %}<tr><td><strong>{{ s.docket }}</strong><br><small>{{ s.booking_date }}</small></td><td>{{ s.source }} → {{ s.destination }}<br><small>{{ s.location or '' }}</small></td><td>{{ s.consignor or '-' }}<br><small>{{ s.consignor_contact or '' }}</small></td><td>{{ s.consignee or '-' }}<br><small>{{ s.consignee_contact or '' }}</small></td><td>{{ s.packages }}</td><td>{{ s.weight or '-' }}</td><td>{{ s.amount or '-' }}</td><td>{% if s.status=='Booked' %}<span class="badge booked">Booked</span>{% elif s.status=='Delivered' %}<span class="badge delivered">Delivered</span>{% elif s.status=='In Transit' %}<span class="badge transit">In Transit</span>{% else %}<span class="badge">{{ s.status }}</span>{% endif %}</td><td>{{ s.updated_at }}</td><td><div class="actions-cell"><a class="mini pdf" href="{{ url_for('shipment_pdf', sid=s.id) }}">PDF</a><a class="mini edit" href="{{ url_for('edit_shipment', sid=s.id) }}">Edit</a><form method="POST" action="{{ url_for('delete_shipment', sid=s.id) }}" onsubmit="return confirm('Delete this shipment?')"><button class="mini delete" type="submit">Delete</button></form></div></td></tr>{% else %}<tr><td colspan="10" class="empty">No shipments found.</td></tr>{% endfor %}</tbody></table></div></section>
-<div class="footer">ANAND TRANSPORT CARRIER • GST ID {{ transport_gst if transport_gst else '08AOJPJ9966R1ZO' }} • +91 7410823003</div></main>
-<script>const q=document.getElementById('search');q.addEventListener('input',()=>{const v=q.value.toLowerCase();document.querySelectorAll('#shipTable tbody tr').forEach(r=>{r.style.display=r.innerText.toLowerCase().includes(v)?'':'none'})});</script></body></html>
-'''
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/pdf"
+    )
 
-BOOKING_FORM_HTML = r'''
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>New Booking - Anand Transport</title>
-<style>
-:root{--red:#b40000;--gold:#f0a900;--bg:#f5f7fb;--ink:#172033;--muted:#687083;--line:#e1e5ec}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}.nav{height:78px;background:#fff;border-bottom:3px solid var(--gold);display:flex;justify-content:space-between;align-items:center;padding:0 4%}.brand{display:flex;align-items:center;gap:12px}.logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#e51b00,#ffb000);display:grid;place-items:center;color:#fff;font-weight:900}.brand h1{font-size:20px;color:#b00000;margin:0}.brand small{color:#555}.nav a{text-decoration:none;color:#111;font-weight:700}.wrap{max-width:1100px;margin:0 auto;padding:28px 4% 50px}.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.head h2{margin:0;font-size:27px}.head p{margin:6px 0;color:var(--muted)}.back{color:#222;text-decoration:none;font-weight:700}.card{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 4px 18px #0000000b;margin-bottom:18px;overflow:hidden}.ct{padding:15px 20px;background:#fff8e8;border-bottom:1px solid #f1e0b4;color:#8a5600;font-weight:900}.cb{padding:20px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:6px}.field input,.field textarea,.field select{width:100%;border:1px solid #d5d9e1;border-radius:8px;padding:11px;font-size:14px;outline:none}.field input:focus,.field textarea:focus{border-color:#c00000;box-shadow:0 0 0 3px #c0000012}.field textarea{min-height:80px;resize:vertical}.full{grid-column:1/-1}.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}.btn{padding:12px 18px;border-radius:9px;font-weight:900;text-decoration:none;border:0;cursor:pointer}.primary{background:var(--red);color:#fff}.secondary{background:#fff;color:#222;border:1px solid var(--line)}.hint{font-size:12px;color:var(--muted);margin-top:5px}.notice{padding:13px 15px;background:#eef6ff;border:1px solid #cfe3fb;border-radius:10px;color:#155a8f;font-size:13px;font-weight:700;margin-bottom:18px}@media(max-width:700px){.grid,.grid3{grid-template-columns:1fr}.head{align-items:flex-start;gap:10px;flex-direction:column}.nav{height:auto;padding:12px 4%}.brand h1{font-size:16px}}
-</style></head><body><header class="nav"><div class="brand"><div class="logo">ATC</div><div><h1>Anand Transport Company</h1><small>Reliable • Fast • Nationwide</small></div></div><a href="{{ url_for('admin') }}">← Admin Dashboard</a></header>
-<main class="wrap"><div class="head"><div><h2>New Shipment Booking</h2><p>Create GR/Consignment and put it directly into customer tracking.</p></div></div><div class="notice">After booking, the shipment status will automatically be <strong>BOOKED</strong>. Customer can track it using the GR/Consignment number. PDF download is available only inside Admin Dashboard.</div>
-<form method="POST"><section class="card"><div class="ct">📦 Booking Details</div><div class="cb"><div class="grid3"><div class="field"><label>Consignment / GR No.</label><input name="docket" value="{{ default_gr }}" required><div class="hint">You can replace the auto-generated number.</div></div><div class="field"><label>Booking Date</label><input type="date" name="booking_date" value="{{ today }}" required></div><div class="field"><label>Expected Delivery Date</label><input type="date" name="expected_delivery"></div></div></div></section>
-<section class="card"><div class="ct">🚚 Route</div><div class="cb"><div class="grid"><div class="field"><label>From</label><input name="source" placeholder="Origin location" required></div><div class="field"><label>To</label><input name="destination" placeholder="Destination location" required></div></div></div></section>
-<section class="card"><div class="ct">👤 Consignor</div><div class="cb"><div class="grid"><div class="field"><label>Consignor Name</label><input name="consignor" required></div><div class="field"><label>Contact Number</label><input name="consignor_contact"></div><div class="field full"><label>Address</label><textarea name="consignor_address"></textarea></div></div></div></section>
-<section class="card"><div class="ct">👤 Consignee</div><div class="cb"><div class="grid"><div class="field"><label>Consignee Name</label><input name="consignee" required></div><div class="field"><label>Contact Number</label><input name="consignee_contact"></div><div class="field full"><label>Address</label><textarea name="consignee_address"></textarea></div></div></div></section>
-<section class="card"><div class="ct">📦 Goods & Charges</div><div class="cb"><div class="grid3"><div class="field"><label>Packages</label><input type="number" min="1" name="packages" value="1" required></div><div class="field"><label>Weight (kg)</label><input name="weight" placeholder="e.g. 25 kg"></div><div class="field"><label>Amount (₹)</label><input name="amount" placeholder="e.g. 1250"></div></div><div class="grid" style="margin-top:16px"><div class="field"><label>Freight Basis</label><select name="freight_basis" required><option value="To Pay">To Pay</option><option value="Paid">Paid</option><option value="TBB">TBB</option></select></div><div class="field"><label>Goods Description</label><input name="goods_description" placeholder="e.g. Electrical Items, Spare Parts, Machinery"></div></div></div></section>
-<section class="card"><div class="ct">📝 Remarks</div><div class="cb"><div class="grid"><div class="field"><label>Booking Time</label><input type="time" name="event_time"></div><div class="field"><label>Remark</label><input name="remark" placeholder="Optional remark"></div></div></div></section>
-<div class="actions"><a class="btn secondary" href="{{ url_for('admin') }}">Cancel</a><button class="btn primary" type="submit">✓ Book Shipment</button></div></form></main></body></html>
-'''
 
 # =========================================================
 # ADMIN DASHBOARD
+# =========================================================
+
+ADMIN_DASHBOARD_HTML = r'''
+<!doctype html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+>
+
+<title>Admin Dashboard - Anand Transport</title>
+
+<style>
+
+:root{
+--red:#b40000;
+--gold:#f0a900;
+--bg:#f5f7fb;
+--ink:#172033;
+--muted:#6b7280;
+--line:#e6e8ef;
+--green:#14804a;
+--blue:#1769aa;
+}
+
+*{
+box-sizing:border-box;
+}
+
+body{
+margin:0;
+font-family:Arial,Helvetica,sans-serif;
+background:var(--bg);
+color:var(--ink);
+}
+
+.nav{
+background:white;
+border-bottom:3px solid var(--gold);
+min-height:78px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:12px 4%;
+gap:20px;
+}
+
+.brand{
+display:flex;
+align-items:center;
+gap:12px;
+}
+
+.logo{
+width:52px;
+height:52px;
+border-radius:12px;
+background:linear-gradient(
+135deg,
+#e51b00,
+#ffb000
+);
+display:grid;
+place-items:center;
+color:white;
+font-weight:900;
+font-size:18px;
+box-shadow:0 3px 8px #bbb;
+}
+
+.brand h1{
+font-size:21px;
+margin:0;
+color:#b00000;
+}
+
+.brand small{
+display:block;
+margin-top:2px;
+color:#555;
+}
+
+.navlinks{
+display:flex;
+gap:16px;
+align-items:center;
+flex-wrap:wrap;
+}
+
+.navlinks a{
+color:#161616;
+text-decoration:none;
+font-weight:700;
+font-size:13px;
+}
+
+.wrap{
+max-width:1450px;
+margin:auto;
+padding:30px 4% 50px;
+}
+
+.top{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:20px;
+margin-bottom:24px;
+}
+
+.top h2{
+margin:0;
+font-size:28px;
+}
+
+.top p{
+margin:7px 0 0;
+color:var(--muted);
+}
+
+.actions{
+display:flex;
+gap:9px;
+flex-wrap:wrap;
+}
+
+.btn{
+display:inline-flex;
+align-items:center;
+gap:7px;
+text-decoration:none;
+border:0;
+border-radius:9px;
+padding:11px 15px;
+font-weight:800;
+cursor:pointer;
+}
+
+.primary{
+background:var(--red);
+color:white;
+}
+
+.secondary{
+background:white;
+color:var(--ink);
+border:1px solid var(--line);
+}
+
+.gold{
+background:#fff4cf;
+color:#7b5200;
+border:1px solid #f2d88c;
+}
+
+.stats{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:16px;
+margin-bottom:22px;
+}
+
+.stat{
+background:white;
+border:1px solid var(--line);
+border-radius:14px;
+padding:20px;
+box-shadow:0 3px 12px #00000008;
+}
+
+.label{
+color:var(--muted);
+font-size:13px;
+font-weight:700;
+}
+
+.num{
+font-size:29px;
+font-weight:900;
+margin-top:8px;
+}
+
+.red{
+color:var(--red);
+}
+
+.blue{
+color:var(--blue);
+}
+
+.green{
+color:var(--green);
+}
+
+.card{
+background:white;
+border:1px solid var(--line);
+border-radius:14px;
+box-shadow:0 3px 12px #00000008;
+overflow:hidden;
+}
+
+.cardhead{
+padding:17px 20px;
+border-bottom:1px solid var(--line);
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:15px;
+}
+
+.cardhead h3{
+margin:0;
+}
+
+.search{
+padding:9px 12px;
+border:1px solid #d8dce5;
+border-radius:8px;
+min-width:230px;
+}
+
+.tablewrap{
+overflow:auto;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+min-width:1050px;
+}
+
+th,
+td{
+text-align:left;
+padding:13px 12px;
+border-bottom:1px solid var(--line);
+font-size:13px;
+vertical-align:top;
+}
+
+th{
+background:#fafafa;
+color:#596174;
+font-size:12px;
+text-transform:uppercase;
+}
+
+.badge{
+display:inline-block;
+padding:5px 9px;
+border-radius:999px;
+font-size:11px;
+font-weight:800;
+background:#eee;
+}
+
+.badge.booked{
+background:#fff0cf;
+color:#8a5a00;
+}
+
+.badge.transit{
+background:#e7f1ff;
+color:#125a9c;
+}
+
+.badge.delivered{
+background:#e5f8ee;
+color:#08703c;
+}
+
+.actions-cell{
+display:flex;
+gap:6px;
+flex-wrap:wrap;
+}
+
+.mini{
+padding:7px 9px;
+border-radius:7px;
+font-size:11px;
+font-weight:800;
+text-decoration:none;
+border:1px solid var(--line);
+background:white;
+color:#222;
+}
+
+.mini.pdf{
+background:#fff4cf;
+color:#775000;
+}
+
+.mini.edit{
+background:#e9f3ff;
+color:#14598f;
+}
+
+.mini.receipt{
+background:#e7f8ee;
+color:#08703c;
+}
+
+.mini.delete{
+background:#fff0f0;
+color:#a00000;
+}
+
+.flash{
+background:#e9f8ef;
+color:#126b3d;
+border:1px solid #bde8ce;
+border-radius:10px;
+padding:12px 15px;
+margin-bottom:18px;
+font-weight:700;
+}
+
+@media(max-width:900px){
+
+.stats{
+grid-template-columns:repeat(2,1fr);
+}
+
+.top{
+align-items:flex-start;
+flex-direction:column;
+}
+
+}
+
+@media(max-width:560px){
+
+.stats{
+grid-template-columns:1fr;
+}
+
+.nav{
+align-items:flex-start;
+flex-direction:column;
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header class="nav">
+
+<div class="brand">
+
+<div class="logo">
+ATC
+</div>
+
+<div>
+
+<h1>Anand Transport Company</h1>
+
+<small>
+Reliable • Fast • Nationwide
+</small>
+
+</div>
+
+</div>
+
+<nav class="navlinks">
+
+<a href="/">Home</a>
+
+<a href="/">Track Shipment</a>
+
+<a href="/about">About Us</a>
+
+<a href="{{ url_for('money_receipt') }}">
+Money Receipt
+</a>
+
+<a href="{{ url_for('change_credentials') }}">
+Change Login
+</a>
+
+<a href="{{ url_for('logout') }}">
+Logout
+</a>
+
+</nav>
+
+</header>
+
+
+<main class="wrap">
+
+
+<div class="top">
+
+<div>
+
+<h2>
+Admin Dashboard
+</h2>
+
+<p>
+Welcome, {{ username }}.
+Manage bookings, shipments and tracking.
+</p>
+
+</div>
+
+
+<div class="actions">
+
+<a
+class="btn primary"
+href="{{ url_for('new_shipment') }}"
+>
+＋ New Booking
+</a>
+
+<a
+class="btn gold"
+href="{{ url_for('money_receipt') }}"
+>
+₹ Money Receipt
+</a>
+
+<a
+class="btn secondary"
+href="{{ url_for('admin') }}"
+>
+↻ Refresh
+</a>
+
+</div>
+
+</div>
+
+
+{% with messages=get_flashed_messages() %}
+
+{% if messages %}
+
+{% for m in messages %}
+
+<div class="flash">
+{{ m }}
+</div>
+
+{% endfor %}
+
+{% endif %}
+
+{% endwith %}
+
+
+<section class="stats">
+
+<div class="stat">
+
+<div class="label">
+TOTAL SHIPMENTS
+</div>
+
+<div class="num">
+{{ total }}
+</div>
+
+</div>
+
+
+<div class="stat">
+
+<div class="label">
+BOOKED
+</div>
+
+<div class="num red">
+{{ booked }}
+</div>
+
+</div>
+
+
+<div class="stat">
+
+<div class="label">
+IN TRANSIT
+</div>
+
+<div class="num blue">
+{{ in_transit }}
+</div>
+
+</div>
+
+
+<div class="stat">
+
+<div class="label">
+DELIVERED
+</div>
+
+<div class="num green">
+{{ delivered }}
+</div>
+
+</div>
+
+</section>
+
+
+<section class="card">
+
+
+<div class="cardhead">
+
+<h3>
+Shipment Management
+</h3>
+
+<input
+class="search"
+id="search"
+placeholder="Search GR / route / name..."
+>
+
+</div>
+
+
+<div class="tablewrap">
+
+<table id="shipTable">
+
+<thead>
+
+<tr>
+
+<th>GR / Docket</th>
+<th>Route</th>
+<th>Consignor</th>
+<th>Consignee</th>
+<th>PKG</th>
+<th>Weight</th>
+<th>Amount</th>
+<th>Status</th>
+<th>Updated</th>
+<th>Actions</th>
+
+</tr>
+
+</thead>
+
+
+<tbody>
+
+{% for s in shipments %}
+
+<tr>
+
+<td>
+
+<strong>
+{{ s.docket }}
+</strong>
+
+<br>
+
+<small>
+{{ s.booking_date }}
+</small>
+
+</td>
+
+
+<td>
+
+{{ s.source }} → {{ s.destination }}
+
+<br>
+
+<small>
+{{ s.location or '' }}
+</small>
+
+</td>
+
+
+<td>
+
+{{ s.consignor or '-' }}
+
+<br>
+
+<small>
+{{ s.consignor_contact or '' }}
+</small>
+
+</td>
+
+
+<td>
+
+{{ s.consignee or '-' }}
+
+<br>
+
+<small>
+{{ s.consignee_contact or '' }}
+</small>
+
+</td>
+
+
+<td>
+{{ s.packages }}
+</td>
+
+
+<td>
+{{ s.weight or '-' }}
+</td>
+
+
+<td>
+
+{% if s.freight_basis == 'To Pay' %}
+
+₹ {{ s.amount or '0' }}
+
+{% else %}
+
+-
+
+{% endif %}
+
+</td>
+
+
+<td>
+
+{% if s.status == 'Booked' %}
+
+<span class="badge booked">
+Booked
+</span>
+
+{% elif s.status == 'Delivered' %}
+
+<span class="badge delivered">
+Delivered
+</span>
+
+{% elif s.status == 'In Transit' %}
+
+<span class="badge transit">
+In Transit
+</span>
+
+{% else %}
+
+<span class="badge">
+{{ s.status }}
+</span>
+
+{% endif %}
+
+</td>
+
+
+<td>
+{{ s.updated_at }}
+</td>
+
+
+<td>
+
+<div class="actions-cell">
+
+
+<a
+class="mini pdf"
+href="{{ url_for('shipment_pdf', sid=s.id) }}"
+>
+PDF
+</a>
+
+
+<a
+class="mini edit"
+href="{{ url_for('edit_shipment', sid=s.id) }}"
+>
+Edit
+</a>
+
+
+<a
+class="mini receipt"
+href="{{ url_for('money_receipt', docket=s.docket) }}"
+>
+Receipt
+</a>
+
+
+<form
+method="POST"
+action="{{ url_for('delete_shipment', sid=s.id) }}"
+onsubmit="return confirm('Delete this shipment?')"
+>
+
+<button
+class="mini delete"
+type="submit"
+>
+Delete
+</button>
+
+</form>
+
+
+</div>
+
+</td>
+
+</tr>
+
+{% else %}
+
+<tr>
+
+<td
+colspan="10"
+style="text-align:center;padding:40px"
+>
+No shipments found.
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</section>
+
+
+<div
+style="
+margin-top:30px;
+text-align:center;
+color:#777;
+font-size:12px;
+"
+>
+
+ANAND TRANSPORT CARRIER
+•
+GST ID {{ transport_gst }}
+•
+{{ transport_helpline }}
+
+</div>
+
+
+</main>
+
+
+<script>
+
+const q =
+document.getElementById('search');
+
+q.addEventListener(
+'input',
+function(){
+
+const v =
+q.value.toLowerCase();
+
+document
+.querySelectorAll(
+'#shipTable tbody tr'
+)
+.forEach(
+function(r){
+
+r.style.display =
+r.innerText
+.toLowerCase()
+.includes(v)
+? ''
+: 'none';
+
+}
+);
+
+}
+);
+
+</script>
+
+</body>
+
+</html>
+'''
+
+
+# =========================================================
+# ADMIN
 # =========================================================
 
 @app.route("/admin")
@@ -744,29 +2570,70 @@ def admin():
 
     con = db()
     cur = con.cursor()
-    cur.execute("SELECT * FROM shipments ORDER BY updated_at DESC")
+
+    cur.execute(
+        """
+        SELECT *
+        FROM shipments
+        ORDER BY updated_at DESC
+        """
+    )
+
     shipments = cur.fetchall()
 
-    cur.execute("SELECT COUNT(*) AS c FROM shipments")
+    cur.execute(
+        "SELECT COUNT(*) AS c FROM shipments"
+    )
+
     total = cur.fetchone()["c"]
-    cur.execute("SELECT COUNT(*) AS c FROM shipments WHERE status='Booked'")
+
+    cur.execute(
+        """
+        SELECT COUNT(*) AS c
+        FROM shipments
+        WHERE status='Booked'
+        """
+    )
+
     booked = cur.fetchone()["c"]
-    cur.execute("SELECT COUNT(*) AS c FROM shipments WHERE status='In Transit'")
+
+    cur.execute(
+        """
+        SELECT COUNT(*) AS c
+        FROM shipments
+        WHERE status='In Transit'
+        """
+    )
+
     in_transit = cur.fetchone()["c"]
-    cur.execute("SELECT COUNT(*) AS c FROM shipments WHERE status='Delivered'")
+
+    cur.execute(
+        """
+        SELECT COUNT(*) AS c
+        FROM shipments
+        WHERE status='Delivered'
+        """
+    )
+
     delivered = cur.fetchone()["c"]
 
     cur.close()
     con.close()
 
-    return render_template_string(ADMIN_DASHBOARD_HTML,
-                                  shipments=shipments,
-                                  total=total,
-                                  booked=booked,
-                                  in_transit=in_transit,
-                                  delivered=delivered,
-                                  username=session.get("admin_username", "Admin"),
-                                  transport_gst=TRANSPORT_GST)
+    return render_template_string(
+        ADMIN_DASHBOARD_HTML,
+        shipments=shipments,
+        total=total,
+        booked=booked,
+        in_transit=in_transit,
+        delivered=delivered,
+        username=session.get(
+            "admin_username",
+            "Admin"
+        ),
+        transport_gst=TRANSPORT_GST,
+        transport_helpline=TRANSPORT_HELPLINE
+    )
 
 
 # =========================================================
@@ -781,158 +2648,31 @@ def admin():
 def new_shipment():
 
     if request.method == "GET":
-        return render_template_string(BOOKING_FORM_HTML,
-                                      today=datetime.now().strftime("%Y-%m-%d"),
-                                      default_gr=generate_gr_no())
+
+        return render_template_string(
+            BOOKING_FORM_HTML,
+            today=datetime.now().strftime(
+                "%Y-%m-%d"
+            ),
+            default_gr=generate_gr_no()
+        )
 
     data = request.form
-    docket = data.get("docket", "").strip() or generate_gr_no()
-    booking_date = data.get("booking_date", "").strip() or datetime.now().strftime("%Y-%m-%d")
-    source = data.get("source", "").strip()
-    destination = data.get("destination", "").strip()
-    consignor = data.get("consignor", "").strip()
-    consignor_address = data.get("consignor_address", "").strip()
-    consignor_contact = data.get("consignor_contact", "").strip()
-    consignee = data.get("consignee", "").strip()
-    consignee_address = data.get("consignee_address", "").strip()
-    consignee_contact = data.get("consignee_contact", "").strip()
-    packages = int(data.get("packages") or 1)
-    weight = data.get("weight", "").strip()
-    amount = data.get("amount", "").strip()
-    freight_basis = data.get("freight_basis", "To Pay").strip() or "To Pay"
-    goods_description = data.get("goods_description", "").strip()
-    expected_delivery = data.get("expected_delivery", "").strip()
-    remark = data.get("remark", "").strip()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    event_time = data.get("event_time", "").strip() or datetime.now().strftime("%H:%M")
-    manual_event_time = f"{booking_date} {event_time}:00"
 
-    if not source or not destination or not consignor or not consignee:
-        flash("Please fill From, To, Consignor and Consignee details.")
-        return redirect(url_for("new_shipment"))
-
-    con = db()
-    cur = con.cursor()
-    try:
-        cur.execute(
-            """
-            INSERT INTO shipments
-            (docket, booking_date, source, destination, consignor, consignee,
-             packages, weight, status, location, expected_delivery, remark,
-             created_at, updated_at, consignor_address, consignor_contact,
-             consignee_address, consignee_contact, amount, freight_basis, goods_description)
-            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            RETURNING id
-            """,
-            (docket, booking_date, source, destination, consignor, consignee,
-             packages, weight, "Booked", source, expected_delivery, remark,
-             now, now, consignor_address, consignor_contact,
-             consignee_address, consignee_contact, amount, freight_basis, goods_description)
-        )
-        sid = cur.fetchone()["id"]
-
-        cur.execute(
-            """
-            INSERT INTO tracking_events
-            (shipment_id, status, location, remark, event_time)
-            VALUES(%s,%s,%s,%s,%s)
-            """,
-            (sid, "Booked", source, "Shipment booked.", manual_event_time)
-        )
-        con.commit()
-        flash(f"Booking {docket} created successfully. You can download its PDF from the dashboard.")
-    except psycopg2.IntegrityError:
-        con.rollback()
-        flash("GR / Consignment number already exists. Please use another number.")
-    finally:
-        cur.close()
-        con.close()
-
-    return redirect(url_for("admin"))
-
-
-# =========================================================
-# EDIT SHIPMENT
-# =========================================================
-
-# =========================================================
-# EDIT SHIPMENT
-# =========================================================
-
-@app.route(
-    "/admin/shipment/<int:sid>/edit",
-    methods=["GET", "POST"]
-)
-@login_required
-def edit_shipment(sid):
-
-    con = db()
-    cur = con.cursor()
-
-    # -----------------------------------------------------
-    # GET EXISTING SHIPMENT
-    # -----------------------------------------------------
-
-    cur.execute(
-        """
-        SELECT *
-        FROM shipments
-        WHERE id=%s
-        """,
-        (sid,)
+    docket = (
+        data.get("docket", "").strip()
+        or generate_gr_no()
     )
 
-    old = cur.fetchone()
-
-    if not old:
-        cur.close()
-        con.close()
-        return "Shipment not found", 404
-
-    # =====================================================
-    # GET REQUEST
-    # =====================================================
-
-    if request.method == "GET":
-
-        cur.execute(
-            """
-            SELECT *
-            FROM tracking_events
-            WHERE shipment_id=%s
-            ORDER BY event_time DESC, id DESC
-            LIMIT 1
-            """,
-            (sid,)
+    booking_date = (
+        data.get(
+            "booking_date",
+            ""
+        ).strip()
+        or datetime.now().strftime(
+            "%Y-%m-%d"
         )
-
-        latest_event = cur.fetchone()
-
-        cur.close()
-        con.close()
-
-        return render_template(
-            "shipment_form.html",
-            shipment=old,
-            latest_event=latest_event
-        )
-
-    # =====================================================
-    # POST REQUEST
-    # =====================================================
-
-    data = request.form
-
-    # -----------------------------------------------------
-    # BASIC SHIPMENT DATA
-    # -----------------------------------------------------
-
-    docket = data.get("docket", "").strip()
-
-    booking_date = data.get(
-        "booking_date",
-        ""
-    ).strip()
+    )
 
     source = data.get(
         "source",
@@ -949,13 +2689,13 @@ def edit_shipment(sid):
         ""
     ).strip()
 
-    consignor_contact = data.get(
-        "consignor_contact",
+    consignor_address = data.get(
+        "consignor_address",
         ""
     ).strip()
 
-    consignor_address = data.get(
-        "consignor_address",
+    consignor_contact = data.get(
+        "consignor_contact",
         ""
     ).strip()
 
@@ -964,13 +2704,13 @@ def edit_shipment(sid):
         ""
     ).strip()
 
-    consignee_contact = data.get(
-        "consignee_contact",
+    consignee_address = data.get(
+        "consignee_address",
         ""
     ).strip()
 
-    consignee_address = data.get(
-        "consignee_address",
+    consignee_contact = data.get(
+        "consignee_contact",
         ""
     ).strip()
 
@@ -983,10 +2723,6 @@ def edit_shipment(sid):
         ""
     ).strip()
 
-    # -----------------------------------------------------
-    # CHARGES / GOODS
-    # -----------------------------------------------------
-
     amount = data.get(
         "amount",
         ""
@@ -995,31 +2731,10 @@ def edit_shipment(sid):
     freight_basis = data.get(
         "freight_basis",
         "To Pay"
-    ).strip()
-
-    if freight_basis not in [
-        "To Pay",
-        "Paid",
-        "TBB"
-    ]:
-        freight_basis = "To Pay"
+    ).strip() or "To Pay"
 
     goods_description = data.get(
         "goods_description",
-        ""
-    ).strip()
-
-    # -----------------------------------------------------
-    # STATUS / LOCATION
-    # -----------------------------------------------------
-
-    status = data.get(
-        "status",
-        "Booked"
-    ).strip()
-
-    location = data.get(
-        "location",
         ""
     ).strip()
 
@@ -1033,346 +2748,127 @@ def edit_shipment(sid):
         ""
     ).strip()
 
-    # -----------------------------------------------------
-    # EVENT DATE / TIME
-    # -----------------------------------------------------
-
-    event_date = data.get(
-        "event_date",
-        ""
-    ).strip()
-
-    event_time = data.get(
-        "event_time",
-        ""
-    ).strip()
-
-    if not event_date:
-        event_date = booking_date
-
-    if not event_time:
-        event_time = "10:00"
-
-    manual_event_time = (
-        f"{event_date} {event_time}:00"
-    )
-
-    # -----------------------------------------------------
-    # INTERNAL UPDATE TIME
-    # -----------------------------------------------------
-
     now = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )
 
-    # =====================================================
-    # VALIDATION
-    # =====================================================
+    event_time = data.get(
+        "event_time",
+        ""
+    ).strip() or datetime.now().strftime(
+        "%H:%M"
+    )
 
-    if not docket:
-        flash("Docket / AWB number is required.")
-        cur.close()
-        con.close()
-        return redirect(
-            url_for(
-                "edit_shipment",
-                sid=sid
-            )
+    manual_event_time = (
+        f"{booking_date} "
+        f"{event_time}:00"
+    )
+
+    if (
+        not source
+        or not destination
+        or not consignor
+        or not consignee
+    ):
+
+        flash(
+            "Please fill From, To, Consignor and Consignee details."
         )
 
-    if not booking_date:
-        flash("Booking date is required.")
-        cur.close()
-        con.close()
         return redirect(
-            url_for(
-                "edit_shipment",
-                sid=sid
-            )
+            url_for("new_shipment")
         )
 
-    if not source or not destination:
-        flash("From and To locations are required.")
-        cur.close()
-        con.close()
-        return redirect(
-            url_for(
-                "edit_shipment",
-                sid=sid
-            )
-        )
-
-    # =====================================================
-    # UPDATE SHIPMENT MASTER DATA
-    # =====================================================
+    con = db()
+    cur = con.cursor()
 
     try:
 
         cur.execute(
             """
-            UPDATE shipments
-            SET
-                docket=%s,
-                booking_date=%s,
-                source=%s,
-                destination=%s,
-
-                consignor=%s,
-                consignor_address=%s,
-                consignor_contact=%s,
-
-                consignee=%s,
-                consignee_address=%s,
-                consignee_contact=%s,
-
-                packages=%s,
-                weight=%s,
-
-                status=%s,
-                location=%s,
-                expected_delivery=%s,
-                remark=%s,
-
-                amount=%s,
-                freight_basis=%s,
-                goods_description=%s,
-
-                updated_at=%s
-
-            WHERE id=%s
+            INSERT INTO shipments
+            (
+                docket,
+                booking_date,
+                source,
+                destination,
+                consignor,
+                consignee,
+                packages,
+                weight,
+                status,
+                location,
+                expected_delivery,
+                remark,
+                created_at,
+                updated_at,
+                consignor_address,
+                consignor_contact,
+                consignee_address,
+                consignee_contact,
+                amount,
+                freight_basis,
+                goods_description
+            )
+            VALUES(
+                %s,%s,%s,%s,%s,%s,%s,%s,%s,
+                %s,%s,%s,%s,%s,%s,%s,%s,%s,
+                %s,%s,%s
+            )
+            RETURNING id
             """,
             (
                 docket,
                 booking_date,
                 source,
                 destination,
-
                 consignor,
-                consignor_address,
-                consignor_contact,
-
                 consignee,
-                consignee_address,
-                consignee_contact,
-
                 packages,
                 weight,
-
-                status,
-                location,
+                "Booked",
+                source,
                 expected_delivery,
                 remark,
-
+                now,
+                now,
+                consignor_address,
+                consignor_contact,
+                consignee_address,
+                consignee_contact,
                 amount,
                 freight_basis,
-                goods_description,
-
-                now,
-                sid
+                goods_description
             )
         )
 
-        # =================================================
-        # FIND ORIGINAL BOOKED EVENT
-        # =================================================
+        sid = cur.fetchone()["id"]
 
         cur.execute(
             """
-            SELECT *
-            FROM tracking_events
-            WHERE shipment_id=%s
-              AND status='Booked'
-            ORDER BY event_time ASC, id ASC
-            LIMIT 1
+            INSERT INTO tracking_events
+            (
+                shipment_id,
+                status,
+                location,
+                remark,
+                event_time
+            )
+            VALUES(%s,%s,%s,%s,%s)
             """,
-            (sid,)
+            (
+                sid,
+                "Booked",
+                source,
+                "Shipment booked.",
+                manual_event_time
+            )
         )
-
-        booked_event = cur.fetchone()
-
-        # =================================================
-        # REMOVE DUPLICATE BOOKED EVENTS
-        # Keep only oldest Booked event.
-        # =================================================
-
-        if booked_event:
-
-            cur.execute(
-                """
-                DELETE FROM tracking_events
-                WHERE shipment_id=%s
-                  AND status='Booked'
-                  AND id<>%s
-                """,
-                (
-                    sid,
-                    booked_event["id"]
-                )
-            )
-
-        # =================================================
-        # IF CURRENT STATUS IS BOOKED
-        # =================================================
-
-        if status == "Booked":
-
-            if booked_event:
-
-                cur.execute(
-                    """
-                    UPDATE tracking_events
-                    SET
-                        location=%s,
-                        remark=%s,
-                        event_time=%s
-                    WHERE id=%s
-                    """,
-                    (
-                        source,
-                        "Shipment booked.",
-                        manual_event_time,
-                        booked_event["id"]
-                    )
-                )
-
-            else:
-
-                cur.execute(
-                    """
-                    INSERT INTO tracking_events
-                    (
-                        shipment_id,
-                        status,
-                        location,
-                        remark,
-                        event_time
-                    )
-                    VALUES(%s,%s,%s,%s,%s)
-                    """,
-                    (
-                        sid,
-                        "Booked",
-                        source,
-                        "Shipment booked.",
-                        manual_event_time
-                    )
-                )
-
-        # =================================================
-        # STATUS IS NOT BOOKED
-        # =================================================
-
-        else:
-
-            # ---------------------------------------------
-            # Find latest event of selected status
-            # ---------------------------------------------
-
-            cur.execute(
-                """
-                SELECT *
-                FROM tracking_events
-                WHERE shipment_id=%s
-                  AND status=%s
-                ORDER BY event_time DESC, id DESC
-                LIMIT 1
-                """,
-                (
-                    sid,
-                    status
-                )
-            )
-
-            same_status_event = cur.fetchone()
-
-            # ---------------------------------------------
-            # STATUS CHANGED
-            # Create a NEW tracking event.
-            # ---------------------------------------------
-
-            if status != old["status"]:
-
-                cur.execute(
-                    """
-                    INSERT INTO tracking_events
-                    (
-                        shipment_id,
-                        status,
-                        location,
-                        remark,
-                        event_time
-                    )
-                    VALUES(%s,%s,%s,%s,%s)
-                    """,
-                    (
-                        sid,
-                        status,
-                        location,
-                        remark,
-                        manual_event_time
-                    )
-                )
-
-            # ---------------------------------------------
-            # SAME STATUS
-            # Update existing event.
-            # Do not create duplicate.
-            # ---------------------------------------------
-
-            elif same_status_event:
-
-                cur.execute(
-                    """
-                    UPDATE tracking_events
-                    SET
-                        location=%s,
-                        remark=%s,
-                        event_time=%s
-                    WHERE id=%s
-                    """,
-                    (
-                        location,
-                        remark,
-                        manual_event_time,
-                        same_status_event["id"]
-                    )
-                )
-
-            # ---------------------------------------------
-            # No event exists for this status.
-            # ---------------------------------------------
-
-            else:
-
-                cur.execute(
-                    """
-                    INSERT INTO tracking_events
-                    (
-                        shipment_id,
-                        status,
-                        location,
-                        remark,
-                        event_time
-                    )
-                    VALUES(%s,%s,%s,%s,%s)
-                    """,
-                    (
-                        sid,
-                        status,
-                        location,
-                        remark,
-                        manual_event_time
-                    )
-                )
-
-        # =================================================
-        # SAVE EVERYTHING
-        # =================================================
 
         con.commit()
 
         flash(
-            "Shipment updated successfully."
+            f"Booking {docket} created successfully."
         )
 
     except psycopg2.IntegrityError:
@@ -1380,21 +2876,7 @@ def edit_shipment(sid):
         con.rollback()
 
         flash(
-            "Docket / AWB number already exists. "
-            "Please use another number."
-        )
-
-    except Exception as e:
-
-        con.rollback()
-
-        print(
-            "EDIT SHIPMENT ERROR:",
-            str(e)
-        )
-
-        flash(
-            "Unable to update shipment. Please try again."
+            "GR / Consignment number already exists."
         )
 
     finally:
@@ -1406,12 +2888,677 @@ def edit_shipment(sid):
         url_for("admin")
     )
 
+
+# =========================================================
+# BOOKING FORM
+# =========================================================
+
+BOOKING_FORM_HTML = r'''
+<!doctype html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1"
+>
+
+<title>New Booking - Anand Transport</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#f5f7fb;
+color:#172033;
+}
+
+.nav{
+height:78px;
+background:#fff;
+border-bottom:3px solid #f0a900;
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:0 4%;
+}
+
+.brand{
+display:flex;
+align-items:center;
+gap:12px;
+}
+
+.logo{
+width:52px;
+height:52px;
+border-radius:12px;
+background:linear-gradient(
+135deg,
+#e51b00,
+#ffb000
+);
+display:grid;
+place-items:center;
+color:#fff;
+font-weight:900;
+}
+
+.brand h1{
+font-size:20px;
+color:#b00000;
+margin:0;
+}
+
+.brand small{
+color:#555;
+}
+
+.nav a{
+text-decoration:none;
+color:#111;
+font-weight:700;
+}
+
+.wrap{
+max-width:1100px;
+margin:auto;
+padding:28px 4% 50px;
+}
+
+.card{
+background:white;
+border:1px solid #e1e5ec;
+border-radius:15px;
+margin-bottom:18px;
+overflow:hidden;
+box-shadow:0 4px 18px #0000000b;
+}
+
+.ct{
+padding:15px 20px;
+background:#fff8e8;
+border-bottom:1px solid #f1e0b4;
+color:#8a5600;
+font-weight:900;
+}
+
+.cb{
+padding:20px;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:16px;
+}
+
+.grid3{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:16px;
+}
+
+.field label{
+display:block;
+font-size:13px;
+font-weight:800;
+margin-bottom:6px;
+}
+
+.field input,
+.field textarea,
+.field select{
+width:100%;
+border:1px solid #d5d9e1;
+border-radius:8px;
+padding:11px;
+font-size:14px;
+box-sizing:border-box;
+}
+
+.field textarea{
+min-height:80px;
+resize:vertical;
+}
+
+.full{
+grid-column:1/-1;
+}
+
+.actions{
+display:flex;
+justify-content:flex-end;
+gap:10px;
+}
+
+.btn{
+padding:12px 18px;
+border-radius:9px;
+font-weight:900;
+text-decoration:none;
+border:0;
+cursor:pointer;
+}
+
+.primary{
+background:#b40000;
+color:#fff;
+}
+
+.secondary{
+background:#fff;
+color:#222;
+border:1px solid #ddd;
+}
+
+.notice{
+padding:13px 15px;
+background:#eef6ff;
+border:1px solid #cfe3fb;
+border-radius:10px;
+color:#155a8f;
+font-size:13px;
+font-weight:700;
+margin-bottom:18px;
+}
+
+@media(max-width:700px){
+
+.grid,
+.grid3{
+grid-template-columns:1fr;
+}
+
+.nav{
+height:auto;
+padding:12px 4%;
+gap:10px;
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header class="nav">
+
+<div class="brand">
+
+<div class="logo">
+ATC
+</div>
+
+<div>
+
+<h1>
+Anand Transport Company
+</h1>
+
+<small>
+Reliable • Fast • Nationwide
+</small>
+
+</div>
+
+</div>
+
+<a href="{{ url_for('admin') }}">
+← Admin Dashboard
+</a>
+
+</header>
+
+
+<main class="wrap">
+
+<h2>
+New Shipment Booking
+</h2>
+
+<div class="notice">
+
+After booking, shipment status will automatically be
+<strong>BOOKED</strong>.
+
+<br>
+
+<strong>
+Important:
+</strong>
+Amount will appear on the GR PDF only when
+Freight Basis is <strong>To Pay</strong>.
+For Paid/TBB, amount will remain only in website records.
+
+</div>
+
+
+<form method="POST">
+
+
+<section class="card">
+
+<div class="ct">
+📦 Booking Details
+</div>
+
+<div class="cb">
+
+<div class="grid3">
+
+
+<div class="field">
+
+<label>
+Consignment / GR No.
+</label>
+
+<input
+name="docket"
+value="{{ default_gr }}"
+required
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Booking Date
+</label>
+
+<input
+type="date"
+name="booking_date"
+value="{{ today }}"
+required
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Expected Delivery Date
+</label>
+
+<input
+type="date"
+name="expected_delivery"
+>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section class="card">
+
+<div class="ct">
+🚚 Route
+</div>
+
+<div class="cb">
+
+<div class="grid">
+
+<div class="field">
+
+<label>
+From
+</label>
+
+<input
+name="source"
+required
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+To
+</label>
+
+<input
+name="destination"
+required
+>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section class="card">
+
+<div class="ct">
+👤 Consignor
+</div>
+
+<div class="cb">
+
+<div class="grid">
+
+<div class="field">
+
+<label>
+Consignor Name
+</label>
+
+<input
+name="consignor"
+required
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Contact Number
+</label>
+
+<input
+name="consignor_contact"
+>
+
+</div>
+
+
+<div class="field full">
+
+<label>
+Address
+</label>
+
+<textarea
+name="consignor_address"
+></textarea>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section class="card">
+
+<div class="ct">
+👤 Consignee
+</div>
+
+<div class="cb">
+
+<div class="grid">
+
+<div class="field">
+
+<label>
+Consignee Name
+</label>
+
+<input
+name="consignee"
+required
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Contact Number
+</label>
+
+<input
+name="consignee_contact"
+>
+
+</div>
+
+
+<div class="field full">
+
+<label>
+Address
+</label>
+
+<textarea
+name="consignee_address"
+></textarea>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section class="card">
+
+<div class="ct">
+📦 Goods & Charges
+</div>
+
+<div class="cb">
+
+<div class="grid3">
+
+
+<div class="field">
+
+<label>
+Packages
+</label>
+
+<input
+type="number"
+min="1"
+name="packages"
+value="1"
+required
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Weight
+</label>
+
+<input
+name="weight"
+placeholder="e.g. 25 kg"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Amount (₹)
+</label>
+
+<input
+name="amount"
+placeholder="e.g. 1250"
+>
+
+</div>
+
+
+</div>
+
+
+<div
+class="grid"
+style="margin-top:16px"
+>
+
+
+<div class="field">
+
+<label>
+Freight Basis
+</label>
+
+<select
+name="freight_basis"
+required
+>
+
+<option value="To Pay">
+To Pay
+</option>
+
+<option value="Paid">
+Paid
+</option>
+
+<option value="TBB">
+TBB
+</option>
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Goods Description
+</label>
+
+<input
+name="goods_description"
+placeholder="e.g. House Hold Goods"
+>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section class="card">
+
+<div class="ct">
+📝 Remarks
+</div>
+
+<div class="cb">
+
+<div class="grid">
+
+<div class="field">
+
+<label>
+Booking Time
+</label>
+
+<input
+type="time"
+name="event_time"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Remark
+</label>
+
+<input
+name="remark"
+>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+<div class="actions">
+
+<a
+class="btn secondary"
+href="{{ url_for('admin') }}"
+>
+Cancel
+</a>
+
+<button
+class="btn primary"
+type="submit"
+>
+✓ Book Shipment
+</button>
+
+</div>
+
+</form>
+
+</main>
+
+</body>
+
+</html>
+'''
+
+
+# =========================================================
+# EDIT SHIPMENT
+# =========================================================
+
+@app.route(
+    "/admin/shipment/<int:sid>/edit",
+    methods=["GET", "POST"]
+)
+@login_required
+def edit_shipment(sid):
+
     con = db()
     cur = con.cursor()
-
-    # -------------------------
-    # GET SHIPMENT
-    # -------------------------
 
     cur.execute(
         """
@@ -1431,14 +3578,7 @@ def edit_shipment(sid):
 
         return "Not found", 404
 
-    # =====================================================
-    # GET
-    # =====================================================
-
     if request.method == "GET":
-
-        # Get latest event for form
-        # default date/time.
 
         cur.execute(
             """
@@ -1462,21 +3602,16 @@ def edit_shipment(sid):
             latest_event=latest_event
         )
 
-    # =====================================================
-    # POST
-    # =====================================================
-
     data = request.form
-
-    # Internal update time ONLY.
-    #
-    # This is NOT used for tracking history.
 
     now = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )
 
-    status = data["status"]
+    status = data.get(
+        "status",
+        "Booked"
+    )
 
     location = data.get(
         "location",
@@ -1487,10 +3622,6 @@ def edit_shipment(sid):
         "remark",
         ""
     ).strip()
-
-    # -------------------------
-    # MANUAL EVENT DATE/TIME
-    # -------------------------
 
     event_date = data.get(
         "event_date",
@@ -1514,12 +3645,13 @@ def edit_shipment(sid):
         event_time = "10:00"
 
     manual_event_time = (
-        f"{event_date} {event_time}:00"
+        f"{event_date} "
+        f"{event_time}:00"
     )
 
-    # =====================================================
-    # UPDATE SHIPMENT MASTER DATA
-    # =====================================================
+    # -------------------------
+    # UPDATE MASTER
+    # -------------------------
 
     cur.execute(
         """
@@ -1541,49 +3673,33 @@ def edit_shipment(sid):
         WHERE id=%s
         """,
         (
-            data["docket"].strip(),
-            data["booking_date"],
-            data["source"].strip(),
-            data["destination"].strip(),
-            data.get(
-                "consignor",
-                ""
-            ).strip(),
-            data.get(
-                "consignee",
-                ""
-            ).strip(),
-            int(
-                data.get(
-                    "packages"
-                ) or 1
-            ),
-            data.get(
-                "weight",
-                ""
-            ).strip(),
+            data.get("docket", "").strip(),
+            data.get("booking_date", ""),
+            data.get("source", "").strip(),
+            data.get("destination", "").strip(),
+            data.get("consignor", "").strip(),
+            data.get("consignee", "").strip(),
+            int(data.get("packages") or 1),
+            data.get("weight", "").strip(),
             status,
             location,
-            data.get(
-                "expected_delivery",
-                ""
-            ),
+            data.get("expected_delivery", ""),
             remark,
             now,
             sid
         )
     )
 
-    # =====================================================
-    # FIND ORIGINAL BOOKED EVENT
-    # =====================================================
+    # -------------------------
+    # ORIGINAL BOOKED EVENT
+    # -------------------------
 
     cur.execute(
         """
         SELECT *
         FROM tracking_events
         WHERE shipment_id=%s
-          AND status='Booked'
+        AND status='Booked'
         ORDER BY event_time ASC, id ASC
         LIMIT 1
         """,
@@ -1592,20 +3708,14 @@ def edit_shipment(sid):
 
     booked_event = cur.fetchone()
 
-    # =====================================================
-    # CLEAN DUPLICATE BOOKED EVENTS
-    #
-    # Keep the oldest/original Booked event.
-    # =====================================================
-
     if booked_event:
 
         cur.execute(
             """
             DELETE FROM tracking_events
             WHERE shipment_id=%s
-              AND status='Booked'
-              AND id<>%s
+            AND status='Booked'
+            AND id<>%s
             """,
             (
                 sid,
@@ -1613,18 +3723,9 @@ def edit_shipment(sid):
             )
         )
 
-    # =====================================================
-    # IMPORTANT BOOKED RULE
-    #
-    # If current status is BOOKED:
-    #
-    # Event Date + Event Time
-    # are allowed to update Booked.
-    #
-    # If current status is anything else:
-    #
-    # DO NOT TOUCH BOOKED.
-    # =====================================================
+    # -------------------------
+    # BOOKED
+    # -------------------------
 
     if status == "Booked":
 
@@ -1640,9 +3741,15 @@ def edit_shipment(sid):
                 WHERE id=%s
                 """,
                 (
-                    data["source"].strip(),
+                    data.get(
+                        "source",
+                        ""
+                    ).strip(),
+
                     "Shipment booked.",
+
                     manual_event_time,
+
                     booked_event["id"]
                 )
             )
@@ -1664,28 +3771,27 @@ def edit_shipment(sid):
                 (
                     sid,
                     "Booked",
-                    data["source"].strip(),
+                    data.get(
+                        "source",
+                        ""
+                    ).strip(),
                     "Shipment booked.",
                     manual_event_time
                 )
             )
 
-    # =====================================================
-    # NON-BOOKED STATUS
-    # =====================================================
+    # -------------------------
+    # OTHER STATUS
+    # -------------------------
 
     else:
-
-        # ---------------------------------------------
-        # Find latest event with current status.
-        # ---------------------------------------------
 
         cur.execute(
             """
             SELECT *
             FROM tracking_events
             WHERE shipment_id=%s
-              AND status=%s
+            AND status=%s
             ORDER BY event_time DESC, id DESC
             LIMIT 1
             """,
@@ -1696,12 +3802,6 @@ def edit_shipment(sid):
         )
 
         same_status_event = cur.fetchone()
-
-        # ---------------------------------------------
-        # STATUS CHANGED
-        #
-        # Create a NEW event using manual date/time.
-        # ---------------------------------------------
 
         if status != old["status"]:
 
@@ -1726,13 +3826,6 @@ def edit_shipment(sid):
                 )
             )
 
-        # ---------------------------------------------
-        # STATUS DID NOT CHANGE
-        #
-        # Update existing latest event.
-        # Do NOT create duplicate.
-        # ---------------------------------------------
-
         elif same_status_event:
 
             cur.execute(
@@ -1751,10 +3844,6 @@ def edit_shipment(sid):
                     same_status_event["id"]
                 )
             )
-
-        # ---------------------------------------------
-        # No existing event for this status
-        # ---------------------------------------------
 
         else:
 
@@ -1778,10 +3867,6 @@ def edit_shipment(sid):
                     manual_event_time
                 )
             )
-
-    # =====================================================
-    # SAVE
-    # =====================================================
 
     con.commit()
 
@@ -1834,77 +3919,1537 @@ def delete_shipment(sid):
 
 
 # =========================================================
-# API TRACK
+# MONEY RECEIPT NUMBER
 # =========================================================
 
-@app.route(
-    "/api/track/<docket>"
-)
-def api_track(docket):
+def generate_receipt_no():
 
     con = db()
     cur = con.cursor()
 
-    # -------------------------
-    # SHIPMENT
-    # -------------------------
+    prefix = datetime.now().strftime(
+        "MR-%Y%m%d"
+    )
 
     cur.execute(
         """
-        SELECT *
-        FROM shipments
-        WHERE lower(docket)=lower(%s)
+        SELECT COUNT(*) AS c
+        FROM money_receipts
+        WHERE receipt_no LIKE %s
         """,
-        (docket,)
+        (
+            prefix + "%"
+        )
     )
 
-    shipment = cur.fetchone()
-
-    if not shipment:
-
-        cur.close()
-        con.close()
-
-        return jsonify(
-            {
-                "found": False
-            }
-        ), 404
-
-    # -------------------------
-    # HISTORY
-    # OLD -> NEW
-    # -------------------------
-
-    cur.execute(
-        """
-        SELECT
-            id,
-            status,
-            location,
-            remark,
-            event_time
-        FROM tracking_events
-        WHERE shipment_id=%s
-        ORDER BY event_time ASC, id ASC
-        """,
-        (shipment["id"],)
-    )
-
-    events = cur.fetchall()
+    count = cur.fetchone()["c"] + 1
 
     cur.close()
     con.close()
 
-    return jsonify(
-        {
-            "found": True,
-            "shipment": dict(shipment),
-            "history": [
-                dict(event)
-                for event in events
+    return (
+        f"{prefix}-{count:04d}"
+    )
+
+
+# =========================================================
+# MONEY RECEIPT
+# =========================================================
+
+@app.route(
+    "/admin/money-receipt",
+    methods=["GET", "POST"]
+)
+@login_required
+def money_receipt():
+
+    docket = request.args.get(
+        "docket",
+        ""
+    ).strip()
+
+    shipment = None
+
+    if docket:
+
+        con = db()
+        cur = con.cursor()
+
+        cur.execute(
+            """
+            SELECT *
+            FROM shipments
+            WHERE lower(docket)=lower(%s)
+            """,
+            (docket,)
+        )
+
+        shipment = cur.fetchone()
+
+        cur.close()
+        con.close()
+
+    if request.method == "POST":
+
+        docket = request.form.get(
+            "docket",
+            ""
+        ).strip()
+
+        con = db()
+        cur = con.cursor()
+
+        cur.execute(
+            """
+            SELECT *
+            FROM shipments
+            WHERE lower(docket)=lower(%s)
+            """,
+            (docket,)
+        )
+
+        shipment = cur.fetchone()
+
+        if not shipment:
+
+            cur.close()
+            con.close()
+
+            flash(
+                "GR / Consignment number not found."
+            )
+
+            return redirect(
+                url_for("money_receipt")
+            )
+
+        freight = money_value(
+            request.form.get("freight")
+        )
+
+        handling = money_value(
+            request.form.get("handling")
+        )
+
+        door_delivery = money_value(
+            request.form.get("door_delivery")
+        )
+
+        receipt_charge = money_value(
+            request.form.get("receipt_charge")
+        )
+
+        damage = money_value(
+            request.form.get("damage")
+        )
+
+        additional_charge = money_value(
+            request.form.get("additional_charge")
+        )
+
+        total = (
+            freight
+            + handling
+            + door_delivery
+            + receipt_charge
+            + damage
+            + additional_charge
+        )
+
+        note = request.form.get(
+            "note",
+            ""
+        ).strip()
+
+        receipt_no = generate_receipt_no()
+
+        created_at = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        cur.execute(
+            """
+            INSERT INTO money_receipts
+            (
+                receipt_no,
+                shipment_id,
+                docket,
+                freight,
+                handling,
+                door_delivery,
+                receipt_charge,
+                damage,
+                additional_charge,
+                total,
+                note,
+                created_at
+            )
+            VALUES(
+                %s,%s,%s,%s,%s,%s,
+                %s,%s,%s,%s,%s,%s
+            )
+            RETURNING id
+            """,
+            (
+                receipt_no,
+                shipment["id"],
+                shipment["docket"],
+                freight,
+                handling,
+                door_delivery,
+                receipt_charge,
+                damage,
+                additional_charge,
+                total,
+                note,
+                created_at
+            )
+        )
+
+        rid = cur.fetchone()["id"]
+
+        con.commit()
+
+        cur.close()
+        con.close()
+
+        flash(
+            f"Money Receipt {receipt_no} generated successfully."
+        )
+
+        return redirect(
+            url_for(
+                "money_receipt_pdf",
+                rid=rid
+            )
+        )
+
+    return render_template_string(
+        MONEY_RECEIPT_HTML,
+        shipment=shipment,
+        docket=docket,
+        default_receipt=generate_receipt_no()
+    )
+
+
+# =========================================================
+# MONEY RECEIPT HTML
+# =========================================================
+
+MONEY_RECEIPT_HTML = r'''
+<!doctype html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1"
+>
+
+<title>Money Receipt - Anand Transport</title>
+
+<style>
+
+*{
+box-sizing:border-box;
+}
+
+body{
+margin:0;
+font-family:Arial,Helvetica,sans-serif;
+background:#f5f7fb;
+color:#172033;
+}
+
+.nav{
+background:white;
+border-bottom:3px solid #f0a900;
+min-height:78px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:12px 4%;
+gap:15px;
+}
+
+.brand{
+display:flex;
+align-items:center;
+gap:12px;
+}
+
+.logo{
+width:52px;
+height:52px;
+border-radius:12px;
+background:linear-gradient(
+135deg,
+#e51b00,
+#ffb000
+);
+display:grid;
+place-items:center;
+color:white;
+font-weight:900;
+}
+
+.brand h1{
+margin:0;
+font-size:20px;
+color:#b00000;
+}
+
+.brand small{
+color:#555;
+}
+
+.nav a{
+text-decoration:none;
+font-weight:700;
+color:#111;
+}
+
+.wrap{
+max-width:1050px;
+margin:auto;
+padding:30px 4% 60px;
+}
+
+.page-title{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:15px;
+margin-bottom:20px;
+}
+
+.page-title h2{
+margin:0;
+font-size:28px;
+}
+
+.card{
+background:white;
+border:1px solid #e2e5eb;
+border-radius:15px;
+overflow:hidden;
+margin-bottom:18px;
+box-shadow:0 4px 18px #00000009;
+}
+
+.card-title{
+padding:15px 20px;
+background:#fff8e8;
+border-bottom:1px solid #f1e0b4;
+font-weight:900;
+color:#8a5600;
+}
+
+.card-body{
+padding:20px;
+}
+
+.search-row{
+display:flex;
+gap:10px;
+}
+
+input,
+textarea{
+width:100%;
+padding:11px;
+border:1px solid #d4d8e0;
+border-radius:8px;
+font-size:14px;
+}
+
+button,
+.btn{
+padding:11px 17px;
+border:0;
+border-radius:8px;
+font-weight:900;
+cursor:pointer;
+text-decoration:none;
+display:inline-block;
+}
+
+.search-btn{
+background:#b40000;
+color:white;
+white-space:nowrap;
+}
+
+.info{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:12px;
+}
+
+.info-box{
+background:#f8f9fb;
+border:1px solid #e3e6eb;
+border-radius:9px;
+padding:12px;
+}
+
+.info-box span{
+display:block;
+font-size:11px;
+color:#777;
+font-weight:700;
+margin-bottom:4px;
+}
+
+.info-box strong{
+font-size:14px;
+}
+
+.charges{
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:15px;
+}
+
+.charge label{
+display:block;
+font-size:13px;
+font-weight:800;
+margin-bottom:6px;
+}
+
+.total{
+margin-top:18px;
+padding:18px;
+background:#fff7dd;
+border:1px solid #f0d68c;
+border-radius:10px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+font-size:20px;
+font-weight:900;
+color:#7a5000;
+}
+
+.actions{
+display:flex;
+justify-content:flex-end;
+gap:10px;
+margin-top:18px;
+}
+
+.cancel{
+background:white;
+border:1px solid #ddd;
+color:#222;
+}
+
+.generate{
+background:#b40000;
+color:white;
+}
+
+.note{
+margin-top:15px;
+}
+
+@media(max-width:700px){
+
+.info,
+.charges{
+grid-template-columns:1fr;
+}
+
+.search-row{
+flex-direction:column;
+}
+
+.page-title{
+align-items:flex-start;
+flex-direction:column;
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+
+<header class="nav">
+
+<div class="brand">
+
+<div class="logo">
+ATC
+</div>
+
+<div>
+
+<h1>
+Anand Transport Company
+</h1>
+
+<small>
+Money Receipt Section
+</small>
+
+</div>
+
+</div>
+
+<a href="{{ url_for('admin') }}">
+← Admin Dashboard
+</a>
+
+</header>
+
+
+<main class="wrap">
+
+
+<div class="page-title">
+
+<div>
+
+<h2>
+₹ Money Receipt
+</h2>
+
+<p>
+Generate receipt for freight and additional charges.
+</p>
+
+</div>
+
+</div>
+
+
+<section class="card">
+
+<div class="card-title">
+🔎 Find Shipment
+</div>
+
+<div class="card-body">
+
+<form method="GET">
+
+<div class="search-row">
+
+<input
+name="docket"
+placeholder="Enter Consignment / GR No."
+value="{{ docket }}"
+required
+>
+
+<button
+class="search-btn"
+type="submit"
+>
+Search Shipment
+</button>
+
+</div>
+
+</form>
+
+</div>
+
+</section>
+
+
+{% if shipment %}
+
+
+<section class="card">
+
+<div class="card-title">
+📦 Shipment Details
+</div>
+
+<div class="card-body">
+
+<div class="info">
+
+
+<div class="info-box">
+
+<span>
+GR / CONSIGNMENT
+</span>
+
+<strong>
+{{ shipment.docket }}
+</strong>
+
+</div>
+
+
+<div class="info-box">
+
+<span>
+BOOKING DATE
+</span>
+
+<strong>
+{{ shipment.booking_date }}
+</strong>
+
+</div>
+
+
+<div class="info-box">
+
+<span>
+STATUS
+</span>
+
+<strong>
+{{ shipment.status }}
+</strong>
+
+</div>
+
+
+<div class="info-box">
+
+<span>
+FROM
+</span>
+
+<strong>
+{{ shipment.source }}
+</strong>
+
+</div>
+
+
+<div class="info-box">
+
+<span>
+TO
+</span>
+
+<strong>
+{{ shipment.destination }}
+</strong>
+
+</div>
+
+
+<div class="info-box">
+
+<span>
+CONSIGNOR
+</span>
+
+<strong>
+{{ shipment.consignor or '-' }}
+</strong>
+
+</div>
+
+
+<div class="info-box">
+
+<span>
+CONSIGNEE
+</span>
+
+<strong>
+{{ shipment.consignee or '-' }}
+</strong>
+
+</div>
+
+
+<div class="info-box">
+
+<span>
+PACKAGES
+</span>
+
+<strong>
+{{ shipment.packages }}
+</strong>
+
+</div>
+
+
+<div class="info-box">
+
+<span>
+WEIGHT
+</span>
+
+<strong>
+{{ shipment.weight or '-' }}
+</strong>
+
+</div>
+
+
+</div>
+
+</div>
+
+</section>
+
+
+<section class="card">
+
+<div class="card-title">
+💰 Charges
+</div>
+
+<div class="card-body">
+
+<form
+method="POST"
+>
+
+<input
+type="hidden"
+name="docket"
+value="{{ shipment.docket }}"
+>
+
+
+<div class="charges">
+
+
+<div class="charge">
+
+<label>
+Freight
+</label>
+
+<input
+class="amount"
+type="number"
+step="0.01"
+min="0"
+name="freight"
+value="0"
+>
+</div>
+
+
+<div class="charge">
+
+<label>
+Handling
+</label>
+
+<input
+class="amount"
+type="number"
+step="0.01"
+min="0"
+name="handling"
+value="0"
+>
+</div>
+
+
+<div class="charge">
+
+<label>
+Door Delivery
+</label>
+
+<input
+class="amount"
+type="number"
+step="0.01"
+min="0"
+name="door_delivery"
+value="0"
+>
+</div>
+
+
+<div class="charge">
+
+<label>
+Receipt
+</label>
+
+<input
+class="amount"
+type="number"
+step="0.01"
+min="0"
+name="receipt_charge"
+value="0"
+>
+</div>
+
+
+<div class="charge">
+
+<label>
+Damage
+</label>
+
+<input
+class="amount"
+type="number"
+step="0.01"
+min="0"
+name="damage"
+value="0"
+>
+</div>
+
+
+<div class="charge">
+
+<label>
+Additional Charge
+</label>
+
+<input
+class="amount"
+type="number"
+step="0.01"
+min="0"
+name="additional_charge"
+value="0"
+>
+</div>
+
+
+</div>
+
+
+<label style="
+display:block;
+font-size:13px;
+font-weight:800;
+margin-top:18px;
+margin-bottom:6px;
+">
+Note / Remark
+</label>
+
+<textarea
+class="note"
+name="note"
+placeholder="Optional note"
+></textarea>
+
+
+<div class="total">
+
+<span>
+TOTAL
+</span>
+
+<span>
+₹ <span id="total">0.00</span>
+</span>
+
+</div>
+
+
+<div class="actions">
+
+<a
+class="btn cancel"
+href="{{ url_for('admin') }}"
+>
+Cancel
+</a>
+
+<button
+class="btn generate"
+type="submit"
+>
+Generate Money Receipt
+</button>
+
+</div>
+
+
+</form>
+
+</div>
+
+</section>
+
+{% endif %}
+
+
+</main>
+
+
+<script>
+
+function calculateTotal(){
+
+let total = 0;
+
+document
+.querySelectorAll(".amount")
+.forEach(function(input){
+
+total +=
+parseFloat(input.value) || 0;
+
+});
+
+document.getElementById(
+"total"
+).innerText =
+total.toFixed(2);
+
+}
+
+document
+.querySelectorAll(".amount")
+.forEach(function(input){
+
+input.addEventListener(
+"input",
+calculateTotal
+);
+
+});
+
+calculateTotal();
+
+</script>
+
+</body>
+
+</html>
+'''
+
+
+# =========================================================
+# MONEY RECEIPT PDF
+# =========================================================
+
+@app.route(
+    "/admin/money-receipt/<int:rid>/pdf"
+)
+@login_required
+def money_receipt_pdf(rid):
+
+    con = db()
+    cur = con.cursor()
+
+    cur.execute(
+        """
+        SELECT
+            mr.*,
+
+            s.booking_date,
+            s.source,
+            s.destination,
+            s.consignor,
+            s.consignee,
+            s.packages,
+            s.weight,
+            s.status,
+            s.freight_basis
+
+        FROM money_receipts mr
+
+        JOIN shipments s
+        ON s.id=mr.shipment_id
+
+        WHERE mr.id=%s
+        """,
+        (rid,)
+    )
+
+    receipt = cur.fetchone()
+
+    cur.close()
+    con.close()
+
+    if not receipt:
+
+        return "Money Receipt not found", 404
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=25,
+        bottomMargin=30
+    )
+
+    styles = getSampleStyleSheet()
+
+    normal = ParagraphStyle(
+        "ReceiptNormal",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=12
+    )
+
+    small = ParagraphStyle(
+        "ReceiptSmall",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10
+    )
+
+    heading = ParagraphStyle(
+        "ReceiptHeading",
+        parent=styles["Heading2"],
+        fontSize=11,
+        leading=13,
+        textColor=colors.HexColor("#b00000"),
+        spaceAfter=5
+    )
+
+    center = ParagraphStyle(
+        "ReceiptCenter",
+        parent=normal,
+        alignment=TA_CENTER
+    )
+
+    right = ParagraphStyle(
+        "ReceiptRight",
+        parent=normal,
+        alignment=TA_RIGHT
+    )
+
+    story = []
+
+    pdf_header(
+        story,
+        styles
+    )
+
+    # =====================================================
+    # RECEIPT TITLE
+    # =====================================================
+
+    title = Table(
+        [
+            [
+                Paragraph(
+                    "<b>MONEY RECEIPT</b>",
+                    ParagraphStyle(
+                        "MoneyTitle",
+                        fontSize=17,
+                        textColor=colors.white,
+                        alignment=TA_CENTER
+                    )
+                )
             ]
-        }
+        ],
+        colWidths=[524]
+    )
+
+    title.setStyle(
+        TableStyle([
+            (
+                "BACKGROUND",
+                (0, 0),
+                (-1, -1),
+                colors.HexColor("#b00000")
+            ),
+            (
+                "BOX",
+                (0, 0),
+                (-1, -1),
+                1,
+                colors.HexColor("#f0a900")
+            ),
+            (
+                "TOPPADDING",
+                (0, 0),
+                (-1, -1),
+                8
+            ),
+            (
+                "BOTTOMPADDING",
+                (0, 0),
+                (-1, -1),
+                8
+            )
+        ])
+    )
+
+    story.append(title)
+
+    story.append(
+        Spacer(1, 10)
+    )
+
+    # =====================================================
+    # RECEIPT INFO
+    # =====================================================
+
+    receipt_info = Table(
+        [
+            [
+                _pdf_paragraph(
+                    "Receipt No.",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    receipt["receipt_no"],
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Date",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    format_date_ddmmyyyy(
+                        str(
+                            receipt["created_at"]
+                        )[:10]
+                    ),
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "GR / Consignment",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    receipt["docket"],
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "Freight Basis",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    receipt.get(
+                        "freight_basis"
+                    ) or "-",
+                    normal
+                )
+            ]
+        ],
+        colWidths=[
+            100,
+            174,
+            100,
+            150
+        ]
+    )
+
+    receipt_info.setStyle(
+        TableStyle([
+            (
+                "GRID",
+                (0, 0),
+                (-1, -1),
+                0.5,
+                colors.HexColor("#cccccc")
+            ),
+            (
+                "BACKGROUND",
+                (0, 0),
+                (0, -1),
+                colors.HexColor("#f7f7f7")
+            ),
+            (
+                "BACKGROUND",
+                (2, 0),
+                (2, -1),
+                colors.HexColor("#f7f7f7")
+            ),
+            (
+                "VALIGN",
+                (0, 0),
+                (-1, -1),
+                "TOP"
+            ),
+            (
+                "LEFTPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            ),
+            (
+                "RIGHTPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            ),
+            (
+                "TOPPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            ),
+            (
+                "BOTTOMPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            )
+        ])
+    )
+
+    story.append(receipt_info)
+
+    story.append(
+        Spacer(1, 10)
+    )
+
+    # =====================================================
+    # CUSTOMER / SHIPMENT
+    # =====================================================
+
+    customer = Table(
+        [
+            [
+                Paragraph(
+                    "SHIPMENT DETAILS",
+                    heading
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    f"Consignor: "
+                    f"{receipt.get('consignor') or '-'}",
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    f"Consignee: "
+                    f"{receipt.get('consignee') or '-'}",
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    f"Route: "
+                    f"{receipt.get('source') or '-'} "
+                    f" → "
+                    f"{receipt.get('destination') or '-'}",
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    f"Packages: "
+                    f"{receipt.get('packages') or '-'}"
+                    f"     Weight: "
+                    f"{receipt.get('weight') or '-'}",
+                    normal
+                )
+            ]
+        ],
+        colWidths=[524]
+    )
+
+    customer.setStyle(
+        TableStyle([
+            (
+                "GRID",
+                (0, 0),
+                (-1, -1),
+                0.5,
+                colors.HexColor("#cccccc")
+            ),
+            (
+                "BACKGROUND",
+                (0, 0),
+                (-1, 0),
+                colors.HexColor("#f7f7f7")
+            ),
+            (
+                "LEFTPADDING",
+                (0, 0),
+                (-1, -1),
+                7
+            ),
+            (
+                "RIGHTPADDING",
+                (0, 0),
+                (-1, -1),
+                7
+            ),
+            (
+                "TOPPADDING",
+                (0, 0),
+                (-1, -1),
+                5
+            ),
+            (
+                "BOTTOMPADDING",
+                (0, 0),
+                (-1, -1),
+                5
+            )
+        ])
+    )
+
+    story.append(customer)
+
+    story.append(
+        Spacer(1, 10)
+    )
+
+    # =====================================================
+    # CHARGES
+    # =====================================================
+
+    charge_rows = [
+
+        [
+            Paragraph(
+                "<b>CHARGE</b>",
+                small
+            ),
+            Paragraph(
+                "<b>AMOUNT</b>",
+                small
+            )
+        ],
+
+        [
+            _pdf_paragraph(
+                "Freight",
+                normal
+            ),
+            _pdf_paragraph(
+                "₹ " +
+                money_text(
+                    receipt["freight"]
+                ),
+                right
+            )
+        ],
+
+        [
+            _pdf_paragraph(
+                "Handling",
+                normal
+            ),
+            _pdf_paragraph(
+                "₹ " +
+                money_text(
+                    receipt["handling"]
+                ),
+                right
+            )
+        ],
+
+        [
+            _pdf_paragraph(
+                "Door Delivery",
+                normal
+            ),
+            _pdf_paragraph(
+                "₹ " +
+                money_text(
+                    receipt["door_delivery"]
+                ),
+                right
+            )
+        ],
+
+        [
+            _pdf_paragraph(
+                "Receipt",
+                normal
+            ),
+            _pdf_paragraph(
+                "₹ " +
+                money_text(
+                    receipt["receipt_charge"]
+                ),
+                right
+            )
+        ],
+
+        [
+            _pdf_paragraph(
+                "Damage",
+                normal
+            ),
+            _pdf_paragraph(
+                "₹ " +
+                money_text(
+                    receipt["damage"]
+                ),
+                right
+            )
+        ],
+
+        [
+            _pdf_paragraph(
+                "Additional Charge",
+                normal
+            ),
+            _pdf_paragraph(
+                "₹ " +
+                money_text(
+                    receipt["additional_charge"]
+                ),
+                right
+            )
+        ],
+
+        [
+            Paragraph(
+                "<b>TOTAL</b>",
+                normal
+            ),
+
+            Paragraph(
+                "<b>₹ "
+                + money_text(
+                    receipt["total"]
+                )
+                + "</b>",
+                right
+            )
+        ]
+    ]
+
+    charges = Table(
+        charge_rows,
+        colWidths=[
+            370,
+            154
+        ]
+    )
+
+    charges.setStyle(
+        TableStyle([
+            (
+                "GRID",
+                (0, 0),
+                (-1, -1),
+                0.5,
+                colors.HexColor("#cccccc")
+            ),
+            (
+                "BACKGROUND",
+                (0, 0),
+                (-1, 0),
+                colors.HexColor("#f7f7f7")
+            ),
+            (
+                "BACKGROUND",
+                (0, -1),
+                (-1, -1),
+                colors.HexColor("#fff4cf")
+            ),
+            (
+                "LEFTPADDING",
+                (0, 0),
+                (-1, -1),
+                7
+            ),
+            (
+                "RIGHTPADDING",
+                (0, 0),
+                (-1, -1),
+                7
+            ),
+            (
+                "TOPPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            ),
+            (
+                "BOTTOMPADDING",
+                (0, 0),
+                (-1, -1),
+                6
+            )
+        ])
+    )
+
+    story.append(charges)
+
+    story.append(
+        Spacer(1, 10)
+    )
+
+    if receipt.get("note"):
+
+        story.append(
+            Paragraph(
+                "NOTE",
+                heading
+            )
+        )
+
+        story.append(
+            _pdf_paragraph(
+                receipt["note"],
+                normal
+            )
+        )
+
+        story.append(
+            Spacer(1, 15)
+        )
+
+    story.append(
+        Paragraph(
+            "Received with thanks.",
+            normal
+        )
+    )
+
+    story.append(
+        Spacer(1, 30)
+    )
+
+    story.append(
+        Paragraph(
+            "For ANAND TRANSPORT CARRIER",
+            right
+        )
+    )
+
+    doc.build(story)
+
+    buffer.seek(0)
+
+    filename = (
+        f"{receipt['receipt_no']}_Money_Receipt.pdf"
+    )
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/pdf"
     )
 
 
