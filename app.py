@@ -947,8 +947,8 @@ def pdf_header(story, styles):
     title = ParagraphStyle(
         "ATCTitle",
         parent=styles["Title"],
-        fontSize=19,
-        leading=22,
+        fontSize=20,
+        leading=23,
         alignment=TA_CENTER,
         textColor=colors.HexColor("#b00000"),
         spaceAfter=2
@@ -957,48 +957,50 @@ def pdf_header(story, styles):
     center = ParagraphStyle(
         "ATCCenter",
         parent=styles["Normal"],
-        fontSize=8.2,
-        leading=10.5,
-        alignment=TA_CENTER,
-        textColor=colors.HexColor("#333333")
-    )
-
-    logo_text = ParagraphStyle(
-        "ATCLogoText",
-        parent=styles["Normal"],
-        fontSize=16,
-        leading=17,
-        alignment=TA_CENTER,
-        textColor=colors.white
-    )
-
-    logo_sub = ParagraphStyle(
-        "ATCLogoSub",
-        parent=styles["Normal"],
-        fontSize=5.2,
-        leading=6,
-        alignment=TA_CENTER,
-        textColor=colors.white
+        fontSize=8.5,
+        leading=11,
+        alignment=TA_CENTER
     )
 
     logo = Table(
         [
-            [Paragraph("<b>ATC</b>", logo_text)],
-            [Paragraph("TRANSPORT", logo_sub)]
+            [
+                Paragraph(
+                    "<b>ATC</b>",
+                    ParagraphStyle(
+                        "LogoText",
+                        fontSize=17,
+                        textColor=colors.white,
+                        alignment=TA_CENTER
+                    )
+                )
+            ]
         ],
-        colWidths=[58],
-        rowHeights=[28, 10]
+        colWidths=[48],
+        rowHeights=[32]
     )
 
     logo.setStyle(
         TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#b00000")),
-            ("BOX", (0, 0), (-1, -1), 1.8, colors.HexColor("#f0a900")),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 2),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-            ("TOPPADDING", (0, 0), (-1, -1), 1),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 1)
+            (
+                "BACKGROUND",
+                (0, 0),
+                (-1, -1),
+                colors.HexColor("#b00000")
+            ),
+            (
+                "BOX",
+                (0, 0),
+                (-1, -1),
+                2,
+                colors.HexColor("#f0a900")
+            ),
+            (
+                "VALIGN",
+                (0, 0),
+                (-1, -1),
+                "MIDDLE"
+            )
         ])
     )
 
@@ -1007,16 +1009,23 @@ def pdf_header(story, styles):
             [
                 logo,
                 [
-                    Paragraph(TRANSPORT_NAME, title),
                     Paragraph(
-                        f"GST ID: {TRANSPORT_GST} | Helpline: {TRANSPORT_HELPLINE}",
+                        TRANSPORT_NAME,
+                        title
+                    ),
+                    Paragraph(
+                        f"GST ID: {TRANSPORT_GST} | "
+                        f"Helpline: {TRANSPORT_HELPLINE}",
                         center
                     ),
-                    Paragraph(TRANSPORT_ADDRESS, center)
+                    Paragraph(
+                        TRANSPORT_ADDRESS,
+                        center
+                    )
                 ]
             ]
         ],
-        colWidths=[70, 454]
+        colWidths=[60, 464]
     )
 
     header.setStyle(
@@ -1024,14 +1033,14 @@ def pdf_header(story, styles):
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("LEFTPADDING", (0, 0), (-1, -1), 3),
             ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-            ("TOPPADDING", (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-            ("LINEBELOW", (0, 0), (-1, -1), 1.2, colors.HexColor("#f0a900"))
         ])
     )
 
     story.append(header)
-    story.append(Spacer(1, 9))
+
+    story.append(
+        Spacer(1, 9)
+    )
 
 
 # =========================================================
@@ -1062,7 +1071,6 @@ def shipment_pdf(sid):
     con.close()
 
     if not shipment:
-
         return "Shipment not found", 404
 
     buffer = BytesIO()
@@ -1070,50 +1078,53 @@ def shipment_pdf(sid):
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=28,
-        leftMargin=28,
-        topMargin=24,
-        bottomMargin=30
+        rightMargin=26,
+        leftMargin=26,
+        topMargin=20,
+        bottomMargin=28
     )
 
     styles = getSampleStyleSheet()
 
     heading = ParagraphStyle(
-        "PDFHeading",
+        "PDFHeadingFinal",
         parent=styles["Heading2"],
         fontSize=10.5,
         leading=13,
         textColor=colors.HexColor("#b00000"),
-        spaceBefore=4,
-        spaceAfter=4
+        spaceBefore=3,
+        spaceAfter=4,
+        fontName="Helvetica-Bold"
     )
 
     normal = ParagraphStyle(
-        "PDFNormal",
+        "PDFNormalFinal",
         parent=styles["Normal"],
-        fontSize=8.7,
-        leading=11
+        fontSize=8.6,
+        leading=10.8,
+        textColor=colors.HexColor("#111111")
     )
 
     small = ParagraphStyle(
-        "PDFSmall",
+        "PDFSmallFinal",
         parent=styles["Normal"],
-        fontSize=7.8,
-        leading=9.5
+        fontSize=7.7,
+        leading=9.4,
+        textColor=colors.HexColor("#222222")
     )
 
     right = ParagraphStyle(
-        "PDFRight",
+        "PDFRightFinal",
         parent=normal,
         alignment=TA_RIGHT
     )
 
     story = []
 
-    pdf_header(
-        story,
-        styles
-    )
+    # -------------------------
+    # ATC HEADER / LOGO
+    # -------------------------
+    pdf_header(story, styles)
 
     story.append(
         Paragraph(
@@ -1130,492 +1141,158 @@ def shipment_pdf(sid):
         shipment.get("expected_delivery")
     )
 
-    freight_basis = (
-        shipment.get("freight_basis")
-        or "To Pay"
-    )
+    freight_basis = str(
+        shipment.get("freight_basis") or "To Pay"
+    ).strip()
 
-    # =====================================================
-    # AMOUNT RULE
-    #
-    # To Pay -> amount shown
-    # Paid/TBB -> amount hidden
-    # =====================================================
-
-    if freight_basis == "To Pay":
-
-        info = [
-
-            [
-                _pdf_paragraph(
-                    "GR / Consignment No.",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment["docket"],
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "Booking Date",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    booking_date,
-                    normal
-                )
-            ],
-
-            [
-                _pdf_paragraph(
-                    "Expected Delivery",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    expected_date,
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "Status",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment["status"],
-                    normal
-                )
-            ],
-
-            [
-                _pdf_paragraph(
-                    "From",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment["source"],
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "To",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment["destination"],
-                    normal
-                )
-            ],
-
-            [
-                _pdf_paragraph(
-                    "Packages",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment.get("packages"),
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "Weight",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment.get("weight") or "-",
-                    normal
-                )
-            ],
-
-            [
-                _pdf_paragraph(
-                    "Freight Basis",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    freight_basis,
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "Amount",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "₹ " + money_text(
-                        shipment.get("amount")
-                    ),
-                    normal
-                )
-            ]
+    # -------------------------
+    # BOOKING INFORMATION
+    # Amount is intentionally shown only for To Pay.
+    # Paid / TBB bookings do not show an Amount field.
+    # -------------------------
+    info = [
+        [
+            _pdf_paragraph("GR / Consignment No.", normal),
+            _pdf_paragraph(shipment.get("docket"), normal),
+            _pdf_paragraph("Booking Date", normal),
+            _pdf_paragraph(booking_date, normal)
+        ],
+        [
+            _pdf_paragraph("Expected Delivery", normal),
+            _pdf_paragraph(expected_date, normal),
+            _pdf_paragraph("Status", normal),
+            _pdf_paragraph(shipment.get("status"), normal)
+        ],
+        [
+            _pdf_paragraph("From", normal),
+            _pdf_paragraph(shipment.get("source"), normal),
+            _pdf_paragraph("To", normal),
+            _pdf_paragraph(shipment.get("destination"), normal)
+        ],
+        [
+            _pdf_paragraph("Packages", normal),
+            _pdf_paragraph(shipment.get("packages") or "-", normal),
+            _pdf_paragraph("Weight", normal),
+            _pdf_paragraph(shipment.get("weight") or "-", normal)
         ]
+    ]
 
-    else:
-
-        info = [
-
-            [
-                _pdf_paragraph(
-                    "GR / Consignment No.",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment["docket"],
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "Booking Date",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    booking_date,
-                    normal
-                )
-            ],
-
-            [
-                _pdf_paragraph(
-                    "Expected Delivery",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    expected_date,
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "Status",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment["status"],
-                    normal
-                )
-            ],
-
-            [
-                _pdf_paragraph(
-                    "From",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment["source"],
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "To",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment["destination"],
-                    normal
-                )
-            ],
-
-            [
-                _pdf_paragraph(
-                    "Packages",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment.get("packages"),
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    "Weight",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    shipment.get("weight") or "-",
-                    normal
-                )
-            ],
-
-            [
-                _pdf_paragraph(
-                    "Freight Basis",
-                    normal
-                ),
-
-                _pdf_paragraph(
-                    freight_basis,
-                    normal
-                ),
-
-                "",
-                ""
-            ]
-        ]
-
-    t = Table(
-        info,
-        colWidths=[
-            100,
-            174,
-            92,
-            157
-        ]
-    )
-
-    t.setStyle(
-        TableStyle([
-            (
-                "GRID",
-                (0, 0),
-                (-1, -1),
-                0.5,
-                colors.HexColor("#cccccc")
-            ),
-
-            (
-                "BACKGROUND",
-                (0, 0),
-                (0, -1),
-                colors.HexColor("#f7f7f7")
-            ),
-
-            (
-                "BACKGROUND",
-                (2, 0),
-                (2, -1),
-                colors.HexColor("#f7f7f7")
-            ),
-
-            (
-                "VALIGN",
-                (0, 0),
-                (-1, -1),
-                "TOP"
-            ),
-
-            (
-                "LEFTPADDING",
-                (0, 0),
-                (-1, -1),
-                5
-            ),
-
-            (
-                "RIGHTPADDING",
-                (0, 0),
-                (-1, -1),
-                5
-            ),
-
-            (
-                "TOPPADDING",
-                (0, 0),
-                (-1, -1),
-                5
-            ),
-
-            (
-                "BOTTOMPADDING",
-                (0, 0),
-                (-1, -1),
-                5
+    if freight_basis.lower() == "to pay":
+        info.append([
+            _pdf_paragraph("Freight Basis", normal),
+            _pdf_paragraph(freight_basis, normal),
+            _pdf_paragraph("Amount", normal),
+            _pdf_paragraph(
+                "₹ " + money_text(shipment.get("amount")),
+                normal
             )
+        ])
+    else:
+        info.append([
+            _pdf_paragraph("Freight Basis", normal),
+            _pdf_paragraph(freight_basis, normal),
+            _pdf_paragraph("", normal),
+            _pdf_paragraph("", normal)
+        ])
+
+    info_table = Table(
+        info,
+        colWidths=[100, 175, 92, 157]
+    )
+
+    info_table.setStyle(
+        TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfcfcf")),
+            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f7f7f7")),
+            ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#f7f7f7")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ])
     )
 
-    story.append(t)
+    story.append(info_table)
+    story.append(Spacer(1, 7))
 
-    story.append(
-        Spacer(1, 7)
-    )
-
-    # =====================================================
+    # -------------------------
     # CONSIGNOR / CONSIGNEE
-    # =====================================================
-
+    # -------------------------
     party = [
-
         [
-            Paragraph(
-                "CONSIGNOR",
-                heading
-            ),
-
-            Paragraph(
-                "CONSIGNEE",
-                heading
-            )
+            Paragraph("CONSIGNOR", heading),
+            Paragraph("CONSIGNEE", heading)
         ],
-
         [
             _pdf_paragraph(
-                "Name: " +
-                str(
-                    shipment.get("consignor")
-                    or "-"
-                ),
+                "Name: " + str(shipment.get("consignor") or "-"),
                 normal
             ),
-
             _pdf_paragraph(
-                "Name: " +
-                str(
-                    shipment.get("consignee")
-                    or "-"
-                ),
+                "Name: " + str(shipment.get("consignee") or "-"),
                 normal
             )
         ],
-
         [
             _pdf_paragraph(
-                "Address: " +
-                str(
-                    shipment.get(
-                        "consignor_address"
-                    ) or "-"
+                "Address: " + str(
+                    shipment.get("consignor_address") or "-"
                 ),
                 small
             ),
-
             _pdf_paragraph(
-                "Address: " +
-                str(
-                    shipment.get(
-                        "consignee_address"
-                    ) or "-"
+                "Address: " + str(
+                    shipment.get("consignee_address") or "-"
                 ),
                 small
             )
         ],
-
         [
             _pdf_paragraph(
-                "Contact: " +
-                str(
-                    shipment.get(
-                        "consignor_contact"
-                    ) or "-"
+                "Contact: " + str(
+                    shipment.get("consignor_contact") or "-"
                 ),
                 normal
             ),
-
             _pdf_paragraph(
-                "Contact: " +
-                str(
-                    shipment.get(
-                        "consignee_contact"
-                    ) or "-"
+                "Contact: " + str(
+                    shipment.get("consignee_contact") or "-"
                 ),
                 normal
             )
         ]
     ]
 
-    pt = Table(
+    party_table = Table(
         party,
-        colWidths=[
-            262,
-            262
-        ]
+        colWidths=[262, 262]
     )
 
-    pt.setStyle(
+    party_table.setStyle(
         TableStyle([
-            (
-                "GRID",
-                (0, 0),
-                (-1, -1),
-                0.5,
-                colors.HexColor("#cccccc")
-            ),
-
-            (
-                "BACKGROUND",
-                (0, 0),
-                (-1, 0),
-                colors.HexColor("#f7f7f7")
-            ),
-
-            (
-                "VALIGN",
-                (0, 0),
-                (-1, -1),
-                "TOP"
-            ),
-
-            (
-                "LEFTPADDING",
-                (0, 0),
-                (-1, -1),
-                6
-            ),
-
-            (
-                "RIGHTPADDING",
-                (0, 0),
-                (-1, -1),
-                6
-            ),
-
-            (
-                "TOPPADDING",
-                (0, 0),
-                (-1, -1),
-                5
-            ),
-
-            (
-                "BOTTOMPADDING",
-                (0, 0),
-                (-1, -1),
-                5
-            )
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfcfcf")),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f7f7f7")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ])
     )
 
-    story.append(pt)
+    story.append(party_table)
+    story.append(Spacer(1, 7))
 
-    story.append(
-        Spacer(1, 7)
-    )
-
-    # =====================================================
-    # GOODS
-    # =====================================================
-
-    goods = (
-        shipment.get("goods_description")
-        or "-"
-    )
-
+    # -------------------------
+    # GOODS DESCRIPTION
+    # -------------------------
     goods_table = Table(
         [
-            [
-                Paragraph(
-                    "GOODS DESCRIPTION",
-                    heading
-                )
-            ],
-
+            [Paragraph("GOODS DESCRIPTION", heading)],
             [
                 _pdf_paragraph(
-                    goods,
+                    shipment.get("goods_description") or "-",
                     normal
                 )
             ]
@@ -1625,68 +1302,22 @@ def shipment_pdf(sid):
 
     goods_table.setStyle(
         TableStyle([
-            (
-                "GRID",
-                (0, 0),
-                (-1, -1),
-                0.5,
-                colors.HexColor("#cccccc")
-            ),
-
-            (
-                "BACKGROUND",
-                (0, 0),
-                (-1, 0),
-                colors.HexColor("#f7f7f7")
-            ),
-
-            (
-                "LEFTPADDING",
-                (0, 0),
-                (-1, -1),
-                6
-            ),
-
-            (
-                "RIGHTPADDING",
-                (0, 0),
-                (-1, -1),
-                6
-            ),
-
-            (
-                "TOPPADDING",
-                (0, 0),
-                (-1, -1),
-                4
-            ),
-
-            (
-                "BOTTOMPADDING",
-                (0, 0),
-                (-1, -1),
-                4
-            )
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfcfcf")),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f7f7f7")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ])
     )
 
     story.append(goods_table)
+    story.append(Spacer(1, 8))
 
-    story.append(
-        Spacer(1, 8)
-    )
-
-    # =====================================================
+    # -------------------------
     # REMARKS
-    # =====================================================
-
-    story.append(
-        Paragraph(
-            "REMARKS",
-            heading
-        )
-    )
-
+    # -------------------------
+    story.append(Paragraph("REMARKS", heading))
     story.append(
         _pdf_paragraph(
             shipment.get("remark") or "-",
@@ -1694,40 +1325,38 @@ def shipment_pdf(sid):
         )
     )
 
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 9))
 
-    terms_title = ParagraphStyle(
-        "TermsTitle",
-        parent=heading,
-        fontSize=8.5,
-        leading=10,
-        spaceBefore=2,
-        spaceAfter=3
-    )
+    # -------------------------
+    # SHORT TERMS & CONDITIONS
+    # -------------------------
+    terms = [
+        "NO RE-BOOKING WILL BE ENTERTAINED AFTER ONE MONTH.",
+        "Company is not responsible for leakage and breakage."
+    ]
 
-    terms_box = Table(
-        [[Paragraph("TERMS & CONDITIONS", terms_title)],
-         [_pdf_paragraph(
-             "1. Goods are accepted subject to applicable transport rules. "
-             "2. Consignor is responsible for correct packing and declaration. "
-             "3. Delivery is subject to route, service availability and required documents. "
-             "4. Shortage/damage must be reported at the time of delivery.",
-             small
-         )]],
+    terms_table = Table(
+        [
+            [Paragraph("TERMS & CONDITIONS", heading)],
+            [_pdf_paragraph("1. " + terms[0], small)],
+            [_pdf_paragraph("2. " + terms[1], small)]
+        ],
         colWidths=[524]
     )
 
-    terms_box.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f7f7f7")),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4)
-    ]))
+    terms_table.setStyle(
+        TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfcfcf")),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f7f7f7")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ])
+    )
 
-    story.append(terms_box)
-    story.append(Spacer(1, 12))
+    story.append(terms_table)
+    story.append(Spacer(1, 20))
 
     story.append(
         Paragraph(
@@ -1736,13 +1365,20 @@ def shipment_pdf(sid):
         )
     )
 
+    story.append(Spacer(1, 15))
+
+    story.append(
+        Paragraph(
+            "Authorized Signatory",
+            right
+        )
+    )
+
     doc.build(story)
 
     buffer.seek(0)
 
-    filename = (
-        f"{shipment['docket']}_GR.pdf"
-    )
+    filename = f"{shipment['docket']}_GR.pdf"
 
     return send_file(
         buffer,
@@ -2898,6 +2534,11 @@ def new_shipment():
 
         cur.close()
         con.close()
+
+    if "sid" in locals():
+        return redirect(
+            url_for("shipment_pdf", sid=sid)
+        )
 
     return redirect(
         url_for("admin")
