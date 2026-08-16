@@ -2465,34 +2465,6 @@ DELIVERED
 </section>
 
 
-<section class="report-filter">
-<div style="font-size:18px;font-weight:900;margin-bottom:5px">📊 Booking Report</div>
-<div style="font-size:12px;color:var(--muted);margin-bottom:14px">
-Custom date period select karke us period ki complete booking list dekhein.
-</div>
-<form method="GET" action="{{ url_for('admin') }}">
-<div class="report-filter-row">
-<div class="report-field">
-<label>From Date</label>
-<input type="date" name="from_date" value="{{ from_date }}">
-</div>
-<div class="report-field">
-<label>To Date</label>
-<input type="date" name="to_date" value="{{ to_date }}">
-</div>
-<button class="btn primary" type="submit">Generate Report</button>
-<a class="btn secondary" href="{{ url_for('admin') }}">Reset</a>
-</div>
-</form>
-</section>
-
-<section class="report-summary">
-<div class="report-card"><div class="label">Total Docket</div><div class="num">{{ total }}</div></div>
-<div class="report-card"><div class="label">Total PKG</div><div class="num">{{ total_packages }}</div></div>
-<div class="report-card"><div class="label">Total Weight</div><div class="num">{{ total_weight_text }} KG</div></div>
-<div class="report-card"><div class="label">Total Amount</div><div class="num">₹ {{ total_amount_text }}</div></div>
-</section>
-
 <section class="card">
 <div class="cardhead">
 <h3>Booking Report Details</h3>
