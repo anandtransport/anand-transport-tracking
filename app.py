@@ -1752,6 +1752,140 @@ def shipment_pdf(sid):
     )
 
 
+
+# =========================================================
+# BOOKING REPORT
+# =========================================================
+
+BOOKING_REPORT_HTML = r"""
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Booking Report - Anand Transport</title>
+<style>
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;color:#172033}
+.wrap{max-width:1500px;margin:auto;padding:28px 4% 50px}
+.nav{background:#fff;border-bottom:3px solid #f0a900;min-height:70px;display:flex;align-items:center;justify-content:space-between;padding:12px 4%;gap:20px}
+.brand{display:flex;align-items:center;gap:12px}.logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#e51b00,#ffb000);display:grid;place-items:center;color:#fff;font-weight:900}
+.brand h1{font-size:21px;margin:0;color:#b00000}.brand small{color:#555}.nav a{color:#111;text-decoration:none;font-weight:800;font-size:13px}
+.filter,.card,.stat{background:#fff;border:1px solid #e6e8ef;border-radius:14px;box-shadow:0 3px 12px #00000008}
+.filter{padding:18px;margin-bottom:20px}.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}.field{min-width:190px}
+.field label{display:block;font-size:12px;font-weight:800;color:#6b7280;margin-bottom:6px}.field input{width:100%;padding:10px 12px;border:1px solid #d8dce5;border-radius:8px;font-size:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:0;border-radius:9px;padding:11px 15px;font-weight:800;cursor:pointer;min-height:42px}
+.primary{background:#b40000;color:#fff}.secondary{background:#fff;color:#172033;border:1px solid #e6e8ef}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}.stat{padding:17px}
+.label{color:#6b7280;font-size:12px;font-weight:800;text-transform:uppercase}.num{font-size:25px;font-weight:900;margin-top:7px}.card{overflow:hidden}
+.head{padding:17px 20px;border-bottom:1px solid #e6e8ef;display:flex;justify-content:space-between}
+.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:1250px}.table th,.table td{padding:12px 10px;border-bottom:1px solid #e6e8ef;font-size:13px;text-align:left}
+.table th{background:#fafafa;color:#596174;font-size:11px;text-transform:uppercase;white-space:nowrap}.center{text-align:center!important}.amount{text-align:right!important;font-weight:800}
+.total td{background:#fff8e8;border-top:2px solid #f0a900;font-weight:900}.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900}
+.paid{background:#e5f8ee;color:#08703c}.tbb{background:#fff4cf;color:#7b5200}.topay{background:#e7f1ff;color:#125a9c}
+@media(max-width:900px){.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.summary{grid-template-columns:1fr}.field{width:100%}}
+</style>
+</head>
+<body>
+<header class="nav">
+<div class="brand"><div class="logo">ATC</div><div><h1>Anand Transport Company</h1><small>Reliable • Fast • Nationwide</small></div></div>
+<a href="{{ url_for('admin') }}">← Admin Dashboard</a>
+</header>
+<main class="wrap">
+<h2>Booking Report</h2>
+<p style="color:#6b7280">Selected date period ki complete booking details.</p>
+<form class="filter" method="GET">
+<div class="row">
+<div class="field"><label>From Date</label><input type="date" name="from_date" value="{{ from_date }}"></div>
+<div class="field"><label>To Date</label><input type="date" name="to_date" value="{{ to_date }}"></div>
+<button class="btn primary" type="submit">Generate Report</button>
+<a class="btn secondary" href="{{ url_for('booking_report') }}">Reset</a>
+</div>
+</form>
+<section class="summary">
+<div class="stat"><div class="label">Total Docket</div><div class="num">{{ total_dockets }}</div></div>
+<div class="stat"><div class="label">Total PKG</div><div class="num">{{ total_packages }}</div></div>
+<div class="stat"><div class="label">Total Weight</div><div class="num">{{ total_weight_text }} KG</div></div>
+<div class="stat"><div class="label">Total Amount</div><div class="num">₹ {{ total_amount_text }}</div></div>
+</section>
+<section class="card">
+<div class="head"><strong>Booking Details</strong><span style="font-size:12px;color:#6b7280">{{ from_date or 'Beginning' }} → {{ to_date or 'Today' }}</span></div>
+<div class="tablewrap"><table class="table">
+<thead><tr><th>SR. No.</th><th>Docket No.</th><th>Consignor</th><th>Consignee</th><th>Date</th><th>Booking Basis</th><th>PKG</th><th>Weight</th><th>Delivery Location</th><th style="text-align:right">Amount</th></tr></thead>
+<tbody>
+{% for s in shipments %}
+<tr><td class="center">{{ loop.index }}</td><td><strong>{{ s.docket }}</strong></td><td>{{ s.consignor or '-' }}</td><td>{{ s.consignee or '-' }}</td><td>{{ s.booking_date }}</td>
+<td>{% set basis=(s.freight_basis or 'To Pay') %}{% if basis|lower == 'paid' %}<span class="badge paid">PAID</span>{% elif basis|lower == 'tbb' %}<span class="badge tbb">TBB</span>{% else %}<span class="badge topay">TO PAY</span>{% endif %}</td>
+<td class="center">{{ s.packages or 0 }}</td><td>{{ s.weight or '-' }}</td><td><strong>{{ s.destination or '-' }}</strong></td><td class="amount">₹ {{ s.amount or '0' }}</td></tr>
+{% else %}<tr><td colspan="10" style="text-align:center;padding:40px;color:#777">No bookings found for selected period.</td></tr>{% endfor %}
+{% if shipments %}<tr class="total"><td colspan="6">TOTAL</td><td class="center">{{ total_packages }}</td><td>{{ total_weight_text }} KG</td><td>{{ total_dockets }} Docket</td><td class="amount">₹ {{ total_amount_text }}</td></tr>{% endif %}
+</tbody></table></div>
+</section>
+</main>
+</body>
+</html>
+"""
+
+
+@app.route("/admin/booking-report")
+@login_required
+def booking_report():
+    from_date = request.args.get("from_date", "").strip()
+    to_date = request.args.get("to_date", "").strip()
+
+    con = db()
+    cur = con.cursor()
+
+    conditions = []
+    params = []
+    if from_date:
+        conditions.append("DATE(booking_date) >= %s")
+        params.append(from_date)
+    if to_date:
+        conditions.append("DATE(booking_date) <= %s")
+        params.append(to_date)
+
+    where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    cur.execute(
+        f"""
+        SELECT id,docket,booking_date,source,destination,consignor,consignee,
+               packages,weight,amount,freight_basis
+        FROM shipments
+        {where_sql}
+        ORDER BY DATE(booking_date) ASC,id ASC
+        """,
+        params
+    )
+    shipments = cur.fetchall()
+
+    cur.execute(
+        f"""
+        SELECT COUNT(*) AS total_dockets,
+               COALESCE(SUM(packages),0) AS total_packages,
+               COALESCE(SUM(COALESCE(NULLIF(regexp_replace(weight::text,'[^0-9.]','','g'),'')::NUMERIC,0)),0) AS total_weight,
+               COALESCE(SUM(COALESCE(NULLIF(regexp_replace(amount::text,'[^0-9.]','','g'),'')::NUMERIC,0)),0) AS total_amount
+        FROM shipments
+        {where_sql}
+        """,
+        params
+    )
+    totals = cur.fetchone()
+
+    cur.close()
+    con.close()
+
+    return render_template_string(
+        BOOKING_REPORT_HTML,
+        shipments=shipments,
+        from_date=from_date,
+        to_date=to_date,
+        total_dockets=totals["total_dockets"] or 0,
+        total_packages=totals["total_packages"] or 0,
+        total_weight_text=money_text(totals["total_weight"] or 0),
+        total_amount_text=money_text(totals["total_amount"] or 0)
+    )
+
+
 # =========================================================
 # ADMIN DASHBOARD
 # =========================================================
