@@ -2760,36 +2760,54 @@ cur.execute(
 
 total_amount = cur.fetchone()["total_amount"] or 0
 
-    # =========================================================
+       # ============================================================
     # PAID / TBB / TO PAY BREAKUP
-    # =========================================================
+    # ============================================================
 
     cur.execute(
         f"""
         SELECT
-            COALESCE(SUM(
-                CASE
-                    WHEN freight_basis = 'Paid'
-                    THEN amount
-                    ELSE 0
-                END
-            ), 0) AS paid_amount,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN freight_basis = 'Paid'
+                        THEN
+                            CASE
+                                WHEN TRIM(amount::text) = '' THEN 0
+                                ELSE CAST(amount AS NUMERIC)
+                            END
+                        ELSE 0
+                    END
+                ), 0
+            ) AS paid_amount,
 
-            COALESCE(SUM(
-                CASE
-                    WHEN freight_basis = 'TBB'
-                    THEN amount
-                    ELSE 0
-                END
-            ), 0) AS tbb_amount,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN freight_basis = 'TBB'
+                        THEN
+                            CASE
+                                WHEN TRIM(amount::text) = '' THEN 0
+                                ELSE CAST(amount AS NUMERIC)
+                            END
+                        ELSE 0
+                    END
+                ), 0
+            ) AS tbb_amount,
 
-            COALESCE(SUM(
-                CASE
-                    WHEN freight_basis = 'To Pay'
-                    THEN amount
-                    ELSE 0
-                END
-            ), 0) AS to_pay_amount
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN freight_basis = 'To Pay'
+                        THEN
+                            CASE
+                                WHEN TRIM(amount::text) = '' THEN 0
+                                ELSE CAST(amount AS NUMERIC)
+                            END
+                        ELSE 0
+                    END
+                ), 0
+            ) AS to_pay_amount
 
         FROM shipments
         {date_condition}
@@ -2800,6 +2818,8 @@ total_amount = cur.fetchone()["total_amount"] or 0
     amount_breakup = cur.fetchone()
 
     paid_amount = amount_breakup["paid_amount"] or 0
+    tbb_amount = amount_breakup["tbb_amount"] or 0
+    to_pay_amount = amount_breakup["to_pay_amount"] or 0
     tbb_amount = amount_breakup["tbb_amount"] or 0
     to_pay_amount = amount_breakup["to_pay_amount"] or 0
 
