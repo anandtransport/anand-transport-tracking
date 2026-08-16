@@ -2741,7 +2741,7 @@ FROM shipments
     # Total Amount
     # This includes amount regardless of Freight Basis:
     # Paid / TBB / To Pay
-cur.execute(
+    cur.execute(
     f"""
     SELECT COALESCE(
         SUM(
