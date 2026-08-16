@@ -3942,6 +3942,35 @@ def generate_receipt_no():
     con = db()
     cur = con.cursor()
 
+    try:
+        prefix = datetime.now().strftime("MR-%Y%m%d")
+
+        cur.execute(
+            """
+            SELECT COUNT(*) AS receipt_count
+            FROM money_receipts
+            WHERE LEFT(receipt_no, LENGTH(%s)) = %s
+            """,
+            (prefix, prefix)
+        )
+
+        row = cur.fetchone()
+
+        if row:
+            count = int(row.get("receipt_count", 0) or 0)
+        else:
+            count = 0
+
+        count += 1
+
+        return f"{prefix}-{count:04d}"
+
+    finally:
+        cur.close()
+        con.close()
+    con = db()
+    cur = con.cursor()
+
     prefix = datetime.now().strftime(
         "MR-%Y%m%d"
     )
