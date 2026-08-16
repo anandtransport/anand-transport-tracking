@@ -1,6 +1,32 @@
 {% extends "base.html" %}
 
-{% block title %}{{ 'Edit' if shipment else 'Add' }} Shipment{% endblock %}
+{% block title %}{{ 'Edit' if shipment else 'Add' }} Shipment<script>
+(function () {
+    const basis = document.getElementById('freightBasis');
+    const codeField = document.getElementById('tbbCustomerCodeField');
+    const codeInput = document.getElementById('tbbCustomerCode');
+
+    function toggleTbbCode() {
+        if (!basis || !codeField || !codeInput) return;
+
+        const isTbb = basis.value === 'TBB';
+
+        codeField.style.display = isTbb ? '' : 'none';
+        codeInput.required = isTbb;
+
+        if (!isTbb) {
+            codeInput.value = '';
+        }
+    }
+
+    if (basis) {
+        basis.addEventListener('change', toggleTbbCode);
+        toggleTbbCode();
+    }
+})();
+</script>
+
+{% endblock %}
 
 {% block content %}
 
@@ -554,6 +580,102 @@ textarea {
                                 placeholder="e.g. 25 kg"
                             >
 
+                        </label>
+
+                        <label>
+
+                            <span>Booking Amount (₹)</span>
+
+                            <input
+                                type="text"
+                                name="amount"
+                                value="{{ shipment.amount if shipment else '' }}"
+                                placeholder="e.g. 1250"
+                            >
+
+                        </label>
+
+                        <label>
+
+                            <span>Shipment Value (₹)</span>
+
+                            <input
+                                type="text"
+                                name="shipment_value"
+                                value="{{ shipment.shipment_value if shipment else '' }}"
+                                placeholder="e.g. 50000"
+                            >
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =========================
+                     BOOKING BASIS
+                ========================== -->
+
+                <div class="form-card">
+
+                    <div class="form-card-title">
+                        <span>💳</span>
+                        Booking Basis
+                    </div>
+
+                    <div class="form-grid two-column">
+
+                        <label>
+                            <span>Freight Basis</span>
+
+                            <select
+                                name="freight_basis"
+                                id="freightBasis"
+                                required
+                            >
+                                <option
+                                    value="To Pay"
+                                    {% if not shipment or not shipment.freight_basis or shipment.freight_basis == 'To Pay' %}selected{% endif %}
+                                >
+                                    To Pay
+                                </option>
+
+                                <option
+                                    value="Paid"
+                                    {% if shipment and shipment.freight_basis == 'Paid' %}selected{% endif %}
+                                >
+                                    Paid
+                                </option>
+
+                                <option
+                                    value="TBB"
+                                    {% if shipment and shipment.freight_basis == 'TBB' %}selected{% endif %}
+                                >
+                                    TBB
+                                </option>
+                            </select>
+                        </label>
+
+                        <label
+                            id="tbbCustomerCodeField"
+                            style="{% if shipment and shipment.freight_basis == 'TBB' %}{% else %}display:none;{% endif %}"
+                        >
+                            <span>TBB Customer Code</span>
+
+                            <input
+                                type="text"
+                                name="tbb_customer_code"
+                                id="tbbCustomerCode"
+                                value="{{ shipment.tbb_customer_code if shipment else '' }}"
+                                placeholder="e.g. TBB001"
+                                autocomplete="off"
+                                {% if shipment and shipment.freight_basis == 'TBB' %}required{% endif %}
+                            >
+
+                            <small style="display:block;margin-top:6px;color:#6b7280;">
+                                Sirf TBB booking ke liye unique customer code.
+                            </small>
                         </label>
 
                     </div>
