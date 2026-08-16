@@ -4,13 +4,384 @@
 
 {% block content %}
 
+<style>
+.shipment-page {
+    min-height: calc(100vh - 80px);
+    background: #f5f7fb;
+    padding: 30px 20px 60px;
+}
+
+.shipment-layout {
+    max-width: 1250px;
+    margin: auto;
+    display: grid;
+    grid-template-columns: 230px 1fr;
+    gap: 24px;
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.admin-sidebar {
+    background: #fff;
+    border: 1px solid #e3e6ec;
+    border-radius: 14px;
+    padding: 18px 12px;
+    height: fit-content;
+    box-shadow: 0 4px 18px rgba(0,0,0,.06);
+}
+
+.sidebar-heading {
+    font-size: 13px;
+    font-weight: 900;
+    color: #b00000;
+    padding: 8px 12px 14px;
+    letter-spacing: .7px;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 13px;
+    margin: 4px 0;
+    border-radius: 9px;
+    text-decoration: none;
+    color: #222;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.sidebar-item:hover {
+    background: #fff3f3;
+    color: #b00000;
+}
+
+.sidebar-item.active {
+    background: #b00000;
+    color: #fff;
+}
+
+.sidebar-item span {
+    width: 22px;
+    text-align: center;
+    font-size: 17px;
+}
+
+/* =========================
+   CONTENT
+========================= */
+
+.shipment-content {
+    min-width: 0;
+}
+
+.shipment-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.shipment-title .title-icon {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: linear-gradient(135deg,#b00000,#e00000);
+    color: white;
+    font-size: 20px;
+    box-shadow: 0 4px 12px rgba(176,0,0,.2);
+}
+
+.shipment-title h2 {
+    margin: 0;
+    font-size: 28px;
+    color: #151922;
+}
+
+/* =========================
+   SUMMARY
+========================= */
+
+.shipment-summary {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 12px;
+    background: white;
+    border: 1px solid #e3e6ec;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 15px rgba(0,0,0,.05);
+}
+
+.shipment-summary div {
+    border-right: 1px solid #e8e8e8;
+    padding-right: 12px;
+}
+
+.shipment-summary div:last-child {
+    border-right: 0;
+}
+
+.shipment-summary span {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    color: #777;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.shipment-summary strong {
+    display: block;
+    font-size: 14px;
+    color: #222;
+}
+
+/* =========================
+   FORM CARD
+========================= */
+
+.form-card {
+    background: #fff;
+    border: 1px solid #e1e5eb;
+    border-radius: 14px;
+    margin-bottom: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,.05);
+}
+
+.form-card-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 15px 19px;
+    background: linear-gradient(90deg,#fff7e5,#fff);
+    border-bottom: 1px solid #eadfca;
+    color: #9b0000;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.form-card-title span {
+    font-size: 17px;
+}
+
+.form-grid {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(2,1fr);
+    gap: 17px;
+}
+
+.shipment-grid {
+    grid-template-columns: repeat(3,1fr);
+}
+
+.two-column {
+    grid-template-columns: repeat(2,1fr);
+}
+
+.full-field {
+    grid-column: 1/-1;
+}
+
+.form-grid label,
+.delivery-field label,
+.remark-field {
+    display: block;
+}
+
+.form-grid label > span,
+.delivery-field label > span,
+.remark-field > span {
+    display: block;
+    font-size: 13px;
+    font-weight: 800;
+    color: #303744;
+    margin-bottom: 7px;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #d4d9e2;
+    border-radius: 8px;
+    background: #fff;
+    color: #222;
+    padding: 11px 12px;
+    font-size: 14px;
+    outline: none;
+    transition: .2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: #b00000;
+    box-shadow: 0 0 0 3px rgba(176,0,0,.08);
+}
+
+textarea {
+    resize: vertical;
+    min-height: 95px;
+}
+
+/* =========================
+   DELIVERY
+========================= */
+
+.delivery-field {
+    padding: 20px;
+    max-width: 430px;
+}
+
+/* =========================
+   REMARK
+========================= */
+
+.remark-field {
+    padding: 20px;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+.shipment-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.shipment-save-btn,
+.shipment-cancel-btn {
+    min-width: 150px;
+    padding: 13px 18px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+}
+
+.shipment-save-btn {
+    border: 0;
+    background: linear-gradient(135deg,#b00000,#d80000);
+    color: #fff;
+    box-shadow: 0 5px 14px rgba(176,0,0,.2);
+}
+
+.shipment-save-btn:hover {
+    background: #980000;
+}
+
+.shipment-cancel-btn {
+    border: 1px solid #d8dce4;
+    background: #fff;
+    color: #333;
+}
+
+.shipment-cancel-btn:hover {
+    background: #f5f5f5;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media(max-width:950px) {
+
+    .shipment-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-sidebar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .sidebar-heading {
+        width: 100%;
+    }
+
+    .sidebar-item {
+        flex: 1;
+        min-width: 130px;
+    }
+
+    .shipment-summary {
+        grid-template-columns: repeat(2,1fr);
+    }
+
+    .shipment-grid {
+        grid-template-columns: repeat(2,1fr);
+    }
+}
+
+@media(max-width:600px) {
+
+    .shipment-page {
+        padding: 20px 12px 40px;
+    }
+
+    .shipment-title h2 {
+        font-size: 23px;
+    }
+
+    .shipment-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .shipment-summary div {
+        border-right: 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+
+    .shipment-summary div:last-child {
+        border-bottom: 0;
+    }
+
+    .form-grid,
+    .shipment-grid,
+    .two-column {
+        grid-template-columns: 1fr;
+    }
+
+    .full-field {
+        grid-column: auto;
+    }
+
+    .shipment-actions {
+        flex-direction: column-reverse;
+    }
+
+    .shipment-save-btn,
+    .shipment-cancel-btn {
+        width: 100%;
+    }
+}
+</style>
+
+
 <main class="shipment-page">
 
     <div class="shipment-layout">
 
-        <!-- =========================================
-             LEFT ADMIN SIDEBAR
-        ========================================== -->
+        <!-- =========================
+             ADMIN SIDEBAR
+        ========================== -->
 
         <aside class="admin-sidebar">
 
@@ -18,7 +389,8 @@
                 ADMIN PANEL
             </div>
 
-            <a href="{{ url_for('admin') }}" class="sidebar-item">
+            <a href="{{ url_for('admin') }}"
+               class="sidebar-item">
                 <span>▦</span>
                 Dashboard
             </a>
@@ -35,7 +407,8 @@
                 Manage Shipments
             </a>
 
-            <a href="{{ url_for('logout') }}" class="sidebar-item">
+            <a href="{{ url_for('logout') }}"
+               class="sidebar-item">
                 <span>↪</span>
                 Logout
             </a>
@@ -43,44 +416,48 @@
         </aside>
 
 
-        <!-- =========================================
-             RIGHT CONTENT
-        ========================================== -->
+        <!-- =========================
+             MAIN CONTENT
+        ========================== -->
 
         <section class="shipment-content">
-
-            <!-- PAGE TITLE -->
 
             <div class="shipment-title">
 
                 {% if shipment %}
+
                     <span class="title-icon">✎</span>
                     <h2>Edit Shipment</h2>
+
                 {% else %}
+
                     <span class="title-icon">▣</span>
                     <h2>Add Shipment</h2>
+
                 {% endif %}
 
             </div>
 
 
-            <!-- =========================================
+            <!-- =========================
                  EDIT SUMMARY
-            ========================================== -->
+            ========================== -->
 
             {% if shipment %}
 
             <div class="shipment-summary">
 
                 <div>
-                    <span>Docket / AWB No.</span>
+                    <span>Consignment / GR No.</span>
                     <strong>{{ shipment.docket }}</strong>
                 </div>
 
                 <div>
                     <span>Route</span>
                     <strong>
-                        {{ shipment.source }} → {{ shipment.destination }}
+                        {{ shipment.source }}
+                        →
+                        {{ shipment.destination }}
                     </strong>
                 </div>
 
@@ -90,7 +467,7 @@
                 </div>
 
                 <div>
-                    <span>Last Updated</span>
+                    <span>Last Event</span>
                     <strong>
                         {% if latest_event %}
                             {{ latest_event.event_time }}
@@ -105,16 +482,12 @@
             {% endif %}
 
 
-            <!-- =========================================
-                 MAIN FORM
-            ========================================== -->
-
-            <form class="shipment-form" method="post">
+            <form class="shipment-form" method="POST">
 
 
-                <!-- =========================================
-                     1. SHIPMENT DETAILS
-                ========================================== -->
+                <!-- =========================
+                     SHIPMENT DETAILS
+                ========================== -->
 
                 <div class="form-card">
 
@@ -123,27 +496,24 @@
                         Shipment Details
                     </div>
 
-
                     <div class="form-grid shipment-grid">
-
-                        <!-- Docket -->
 
                         <label class="full-field">
 
-                            <span>Docket / AWB No.</span>
+                            <span>
+                                Docket / AWB / Consignment No.
+                            </span>
 
                             <input
                                 type="text"
                                 name="docket"
                                 required
-                                placeholder="Enter docket or AWB number"
                                 value="{{ shipment.docket if shipment else '' }}"
+                                placeholder="Enter GR / Consignment number"
                             >
 
                         </label>
 
-
-                        <!-- Booking Date -->
 
                         <label>
 
@@ -159,8 +529,6 @@
                         </label>
 
 
-                        <!-- Packages -->
-
                         <label>
 
                             <span>Packages</span>
@@ -169,24 +537,21 @@
                                 type="number"
                                 min="1"
                                 name="packages"
-                                placeholder="Number of packages"
                                 value="{{ shipment.packages if shipment else 1 }}"
                             >
 
                         </label>
 
 
-                        <!-- Weight -->
-
                         <label>
 
-                            <span>Weight (kg)</span>
+                            <span>Weight</span>
 
                             <input
                                 type="text"
                                 name="weight"
-                                placeholder="Enter weight"
                                 value="{{ shipment.weight if shipment else '' }}"
+                                placeholder="e.g. 25 kg"
                             >
 
                         </label>
@@ -196,71 +561,59 @@
                 </div>
 
 
-                <!-- =========================================
-                     2. ROUTE & STATUS
-                ========================================== -->
+                <!-- =========================
+                     ROUTE & STATUS
+                ========================== -->
 
                 <div class="form-card">
 
                     <div class="form-card-title">
-                        <span>▣</span>
-                        Route & Location
+                        <span>🚚</span>
+                        Route & Tracking Status
                     </div>
 
-
                     <div class="form-grid two-column">
-
-                        <!-- From -->
 
                         <label>
 
                             <span>From</span>
 
                             <input
-                                type="text"
                                 name="source"
                                 required
-                                placeholder="Origin location"
                                 value="{{ shipment.source if shipment else '' }}"
+                                placeholder="Origin location"
                             >
 
                         </label>
 
-
-                        <!-- To -->
 
                         <label>
 
                             <span>To</span>
 
                             <input
-                                type="text"
                                 name="destination"
                                 required
-                                placeholder="Destination location"
                                 value="{{ shipment.destination if shipment else '' }}"
+                                placeholder="Destination location"
                             >
 
                         </label>
 
-
-                        <!-- Current Location -->
 
                         <label>
 
                             <span>Current Location</span>
 
                             <input
-                                type="text"
                                 name="location"
-                                placeholder="Current location"
                                 value="{{ shipment.location if shipment else '' }}"
+                                placeholder="Current shipment location"
                             >
 
                         </label>
 
-
-                        <!-- Status -->
 
                         <label>
 
@@ -300,254 +653,50 @@
                 </div>
 
 
-                <!-- =========================================
-                     3. CONSIGNOR
-                ========================================== -->
+                <!-- =========================
+                     CONSIGNOR / CONSIGNEE
+                ========================== -->
 
                 <div class="form-card">
 
                     <div class="form-card-title">
-                        <span>▧</span>
-                        Consignor Details
+                        <span>👥</span>
+                        Consignor & Consignee
                     </div>
-
 
                     <div class="form-grid two-column">
 
-                        <!-- Name -->
-
                         <label>
 
-                            <span>Consignor Name</span>
+                            <span>Consignor</span>
 
                             <input
-                                type="text"
                                 name="consignor"
-                                placeholder="Enter consignor name"
                                 value="{{ shipment.consignor if shipment else '' }}"
+                                placeholder="Consignor name"
                             >
 
                         </label>
 
 
-                        <!-- Contact -->
-
                         <label>
 
-                            <span>Contact Number</span>
+                            <span>Consignee</span>
 
                             <input
-                                type="text"
-                                name="consignor_contact"
-                                placeholder="Enter contact number"
-                                value="{{ shipment.consignor_contact if shipment else '' }}"
-                            >
-
-                        </label>
-
-
-                        <!-- Address -->
-
-                        <label class="full-field">
-
-                            <span>Consignor Address</span>
-
-                            <textarea
-                                name="consignor_address"
-                                rows="3"
-                                placeholder="Enter consignor address..."
-                            >{{ shipment.consignor_address if shipment else '' }}</textarea>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-
-                <!-- =========================================
-                     4. CONSIGNEE
-                ========================================== -->
-
-                <div class="form-card">
-
-                    <div class="form-card-title">
-                        <span>▧</span>
-                        Consignee Details
-                    </div>
-
-
-                    <div class="form-grid two-column">
-
-                        <!-- Name -->
-
-                        <label>
-
-                            <span>Consignee Name</span>
-
-                            <input
-                                type="text"
                                 name="consignee"
-                                placeholder="Enter consignee name"
                                 value="{{ shipment.consignee if shipment else '' }}"
+                                placeholder="Consignee name"
                             >
 
                         </label>
 
 
-                        <!-- Contact -->
+                        <!-- EVENT DATE -->
 
                         <label>
 
-                            <span>Contact Number</span>
-
-                            <input
-                                type="text"
-                                name="consignee_contact"
-                                placeholder="Enter contact number"
-                                value="{{ shipment.consignee_contact if shipment else '' }}"
-                            >
-
-                        </label>
-
-
-                        <!-- Address -->
-
-                        <label class="full-field">
-
-                            <span>Consignee Address</span>
-
-                            <textarea
-                                name="consignee_address"
-                                rows="3"
-                                placeholder="Enter consignee address..."
-                            >{{ shipment.consignee_address if shipment else '' }}</textarea>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-
-                <!-- =========================================
-                     5. GOODS & CHARGES
-                ========================================== -->
-
-                <div class="form-card">
-
-                    <div class="form-card-title">
-                        <span>▣</span>
-                        Goods & Charges
-                    </div>
-
-
-                    <div class="form-grid two-column">
-
-                        <!-- Freight Basis -->
-
-                        <label>
-
-                            <span>Freight Basis</span>
-
-                            <select name="freight_basis" required>
-
-                                <option
-                                    value="To Pay"
-                                    {% if shipment and shipment.freight_basis == 'To Pay' %}
-                                        selected
-                                    {% elif not shipment %}
-                                        selected
-                                    {% endif %}
-                                >
-                                    To Pay
-                                </option>
-
-                                <option
-                                    value="Paid"
-                                    {% if shipment and shipment.freight_basis == 'Paid' %}
-                                        selected
-                                    {% endif %}
-                                >
-                                    Paid
-                                </option>
-
-                                <option
-                                    value="TBB"
-                                    {% if shipment and shipment.freight_basis == 'TBB' %}
-                                        selected
-                                    {% endif %}
-                                >
-                                    TBB
-                                </option>
-
-                            </select>
-
-                            <small class="field-hint">
-                                Select who will pay the freight.
-                            </small>
-
-                        </label>
-
-
-                        <!-- Amount -->
-
-                        <label>
-
-                            <span>Amount (₹)</span>
-
-                            <input
-                                type="text"
-                                name="amount"
-                                placeholder="e.g. 1250"
-                                value="{{ shipment.amount if shipment else '' }}"
-                            >
-
-                        </label>
-
-
-                        <!-- Goods Description -->
-
-                        <label class="full-field">
-
-                            <span>Goods Description</span>
-
-                            <textarea
-                                name="goods_description"
-                                rows="3"
-                                placeholder="e.g. Electrical Items, Spare Parts, Machinery..."
-                            >{{ shipment.goods_description if shipment else '' }}</textarea>
-
-                            <small class="field-hint">
-                                Enter the description of goods being transported.
-                            </small>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-
-                <!-- =========================================
-                     6. EVENT DATE & TIME
-                ========================================== -->
-
-                <div class="form-card">
-
-                    <div class="form-card-title">
-                        <span>◷</span>
-                        Tracking Event Date & Time
-                    </div>
-
-
-                    <div class="form-grid two-column">
-
-                        <!-- Event Date -->
-
-                        <label>
-
-                            <span>Event Date</span>
+                            <span>Tracking Event Date</span>
 
                             <input
                                 type="date"
@@ -560,18 +709,14 @@
                                 }}"
                             >
 
-                            <small class="field-hint">
-                                Date shown in tracking history.
-                            </small>
-
                         </label>
 
 
-                        <!-- Event Time -->
+                        <!-- EVENT TIME -->
 
                         <label>
 
-                            <span>Event Time</span>
+                            <span>Tracking Event Time</span>
 
                             <input
                                 type="time"
@@ -584,10 +729,6 @@
                                 }}"
                             >
 
-                            <small class="field-hint">
-                                Time shown in tracking history.
-                            </small>
-
                         </label>
 
                     </div>
@@ -595,21 +736,18 @@
                 </div>
 
 
-                <!-- =========================================
-                     7. DELIVERY INFORMATION
-                ========================================== -->
+                <!-- =========================
+                     DELIVERY INFORMATION
+                ========================== -->
 
                 <div class="form-card">
 
                     <div class="form-card-title">
-                        <span>▣</span>
+                        <span>📅</span>
                         Delivery Information
                     </div>
 
-
-                    <div class="form-grid two-column">
-
-                        <!-- Expected Delivery -->
+                    <div class="delivery-field">
 
                         <label>
 
@@ -628,17 +766,16 @@
                 </div>
 
 
-                <!-- =========================================
-                     8. REMARK
-                ========================================== -->
+                <!-- =========================
+                     REMARK
+                ========================== -->
 
                 <div class="form-card">
 
                     <div class="form-card-title">
-                        <span>◯</span>
+                        <span>📝</span>
                         Additional Information
                     </div>
-
 
                     <label class="remark-field">
 
@@ -655,11 +792,18 @@
                 </div>
 
 
-                <!-- =========================================
+                <!-- =========================
                      BUTTONS
-                ========================================== -->
+                ========================== -->
 
                 <div class="shipment-actions">
+
+                    <a
+                        href="{{ url_for('admin') }}"
+                        class="shipment-cancel-btn"
+                    >
+                        Cancel
+                    </a>
 
                     <button
                         type="submit"
@@ -667,23 +811,14 @@
                     >
 
                         {% if shipment %}
-                            ▣ &nbsp; Update Shipment
+                            ✓ Update Shipment
                         {% else %}
-                            ▣ &nbsp; Save Shipment
+                            ✓ Save Shipment
                         {% endif %}
 
                     </button>
 
-
-                    <a
-                        class="shipment-cancel-btn"
-                        href="{{ url_for('admin') }}"
-                    >
-                        Cancel
-                    </a>
-
                 </div>
-
 
             </form>
 
@@ -692,37 +827,5 @@
     </div>
 
 </main>
-
-
-<!-- =========================================
-     SMALL PAGE-SPECIFIC STYLES
-========================================== -->
-
-<style>
-
-.field-hint {
-    display: block;
-    margin-top: 5px;
-    color: #777;
-    font-size: 11px;
-    line-height: 1.4;
-}
-
-.shipment-form textarea {
-    width: 100%;
-    box-sizing: border-box;
-    resize: vertical;
-}
-
-.shipment-form select {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.full-field {
-    grid-column: 1 / -1;
-}
-
-</style>
 
 {% endblock %}
