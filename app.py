@@ -931,116 +931,104 @@ def generate_gr_no():
 # =========================================================
 
 def _pdf_paragraph(text, style):
-
     import html
-
     return Paragraph(
-        html.escape(
-            str(text or "")
-        ),
+        html.escape(str(text or "")),
         style
     )
 
 
 def pdf_header(story, styles):
+    """Premium ATC GR receipt header."""
 
     title = ParagraphStyle(
-        "ATCTitle",
-        parent=styles["Title"],
-        fontSize=20,
+        "ATCPremiumTitle",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=21,
         leading=23,
-        alignment=TA_CENTER,
-        textColor=colors.HexColor("#b00000"),
-        spaceAfter=2
+        alignment=TA_LEFT,
+        textColor=colors.HexColor("#a90000"),
+        spaceAfter=2,
     )
 
-    center = ParagraphStyle(
-        "ATCCenter",
+    sub = ParagraphStyle(
+        "ATCPremiumSub",
         parent=styles["Normal"],
-        fontSize=8.5,
-        leading=11,
-        alignment=TA_CENTER
+        fontName="Helvetica",
+        fontSize=7.8,
+        leading=9.5,
+        alignment=TA_LEFT,
+        textColor=colors.HexColor("#4b5563"),
+    )
+
+    logo_main = ParagraphStyle(
+        "ATCPremiumLogoMain",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=22,
+        leading=22,
+        alignment=TA_CENTER,
+        textColor=colors.white,
+    )
+
+    logo_sub = ParagraphStyle(
+        "ATCPremiumLogoSub",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=5.5,
+        leading=6,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#ffd66b"),
     )
 
     logo = Table(
         [
-            [
-                Paragraph(
-                    "<b>ATC</b>",
-                    ParagraphStyle(
-                        "LogoText",
-                        fontSize=17,
-                        textColor=colors.white,
-                        alignment=TA_CENTER
-                    )
-                )
-            ]
+            [Paragraph("ATC", logo_main)],
+            [Paragraph("TRANSPORT", logo_sub)],
         ],
-        colWidths=[48],
-        rowHeights=[32]
+        colWidths=[68],
+        rowHeights=[31, 11],
     )
+    logo.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#a90000")),
+        ("BOX", (0, 0), (-1, -1), 2, colors.HexColor("#e4a400")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+    ]))
 
-    logo.setStyle(
-        TableStyle([
-            (
-                "BACKGROUND",
-                (0, 0),
-                (-1, -1),
-                colors.HexColor("#b00000")
-            ),
-            (
-                "BOX",
-                (0, 0),
-                (-1, -1),
-                2,
-                colors.HexColor("#f0a900")
-            ),
-            (
-                "VALIGN",
-                (0, 0),
-                (-1, -1),
-                "MIDDLE"
-            )
-        ])
-    )
+    company = [
+        Paragraph(TRANSPORT_NAME, title),
+        Paragraph(f"GST ID: {TRANSPORT_GST}  |  Helpline: {TRANSPORT_HELPLINE}", sub),
+        Paragraph(TRANSPORT_ADDRESS, sub),
+    ]
 
-    header = Table(
-        [
-            [
-                logo,
-                [
-                    Paragraph(
-                        TRANSPORT_NAME,
-                        title
-                    ),
-                    Paragraph(
-                        f"GST ID: {TRANSPORT_GST} | "
-                        f"Helpline: {TRANSPORT_HELPLINE}",
-                        center
-                    ),
-                    Paragraph(
-                        TRANSPORT_ADDRESS,
-                        center
-                    )
-                ]
-            ]
-        ],
-        colWidths=[60, 464]
-    )
-
-    header.setStyle(
-        TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 3),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-        ])
-    )
-
+    header = Table([[logo, company]], colWidths=[78, 446])
+    header.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
     story.append(header)
 
-    story.append(
-        Spacer(1, 9)
-    )
+    strip = Table([[Paragraph("TRANSPORT & LOGISTICS  •  GR / CONSIGNMENT RECEIPT", ParagraphStyle(
+        "ATCStrip", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=7.2,
+        leading=8, alignment=TA_RIGHT, textColor=colors.white))]], colWidths=[524])
+    strip.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#a90000")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(Spacer(1, 6))
+    story.append(strip)
+    story.append(Spacer(1, 8))
 
 
 # =========================================================
@@ -1055,18 +1043,8 @@ def shipment_pdf(sid):
 
     con = db()
     cur = con.cursor()
-
-    cur.execute(
-        """
-        SELECT *
-        FROM shipments
-        WHERE id=%s
-        """,
-        (sid,)
-    )
-
+    cur.execute("SELECT * FROM shipments WHERE id=%s", (sid,))
     shipment = cur.fetchone()
-
     cur.close()
     con.close()
 
@@ -1074,322 +1052,206 @@ def shipment_pdf(sid):
         return "Shipment not found", 404
 
     buffer = BytesIO()
-
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=26,
-        leftMargin=26,
-        topMargin=20,
-        bottomMargin=28
+        rightMargin=28,
+        leftMargin=28,
+        topMargin=22,
+        bottomMargin=26,
+        title=f"{shipment.get('docket', 'Shipment')} - GR Booking Receipt",
+        author=TRANSPORT_NAME,
     )
 
     styles = getSampleStyleSheet()
+    red = colors.HexColor("#a90000")
+    gold = colors.HexColor("#e4a400")
+    dark = colors.HexColor("#20252d")
+    muted = colors.HexColor("#667085")
+    line = colors.HexColor("#d7dbe1")
+    soft = colors.HexColor("#f7f8fa")
+    cream = colors.HexColor("#fff8e8")
 
-    heading = ParagraphStyle(
-        "PDFHeadingFinal",
-        parent=styles["Heading2"],
-        fontSize=10.5,
-        leading=13,
-        textColor=colors.HexColor("#b00000"),
-        spaceBefore=3,
-        spaceAfter=4,
-        fontName="Helvetica-Bold"
+    section = ParagraphStyle(
+        "ATCSectionPremium", parent=styles["Normal"], fontName="Helvetica-Bold",
+        fontSize=9.3, leading=11, textColor=red, spaceAfter=0,
     )
-
-    normal = ParagraphStyle(
-        "PDFNormalFinal",
-        parent=styles["Normal"],
-        fontSize=8.6,
-        leading=10.8,
-        textColor=colors.HexColor("#111111")
+    label = ParagraphStyle(
+        "ATCLabelPremium", parent=styles["Normal"], fontName="Helvetica-Bold",
+        fontSize=7.3, leading=8.6, textColor=muted,
     )
-
+    value = ParagraphStyle(
+        "ATCValuePremium", parent=styles["Normal"], fontName="Helvetica",
+        fontSize=8.4, leading=10.2, textColor=dark,
+    )
     small = ParagraphStyle(
-        "PDFSmallFinal",
-        parent=styles["Normal"],
-        fontSize=7.7,
-        leading=9.4,
-        textColor=colors.HexColor("#222222")
+        "ATCSmallPremium", parent=styles["Normal"], fontName="Helvetica",
+        fontSize=7.3, leading=9.2, textColor=dark,
+    )
+    right = ParagraphStyle(
+        "ATCRightPremium", parent=value, alignment=TA_RIGHT,
     )
 
-    right = ParagraphStyle(
-        "PDFRightFinal",
-        parent=normal,
-        alignment=TA_RIGHT
-    )
+    def P(text, style=value):
+        return _pdf_paragraph(text, style)
 
     story = []
-
-    # -------------------------
-    # ATC HEADER / LOGO
-    # -------------------------
     pdf_header(story, styles)
 
-    story.append(
-        Paragraph(
-            "CONSIGNMENT / GR BOOKING RECEIPT",
-            heading
-        )
-    )
+    # Receipt title card
+    title = Table([[Paragraph("CONSIGNMENT / GR BOOKING RECEIPT", ParagraphStyle(
+        "ReceiptTitle", parent=styles["Normal"], fontName="Helvetica-Bold",
+        fontSize=11.2, leading=13, textColor=red))]], colWidths=[524])
+    title.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), cream),
+        ("LINEBEFORE", (0, 0), (0, -1), 4, gold),
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#eadbb6")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+    ]))
+    story.append(title)
+    story.append(Spacer(1, 7))
 
-    booking_date = format_date_ddmmyyyy(
-        shipment.get("booking_date")
-    )
+    booking_date = format_date_ddmmyyyy(shipment.get("booking_date"))
+    expected_date = format_date_ddmmyyyy(shipment.get("expected_delivery"))
+    freight_basis = str(shipment.get("freight_basis") or "To Pay").strip()
 
-    expected_date = format_date_ddmmyyyy(
-        shipment.get("expected_delivery")
-    )
-
-    freight_basis = str(
-        shipment.get("freight_basis") or "To Pay"
-    ).strip()
-
-    # -------------------------
-    # BOOKING INFORMATION
-    # Amount is intentionally shown only for To Pay.
-    # Paid / TBB bookings do not show an Amount field.
-    # -------------------------
     info = [
-        [
-            _pdf_paragraph("GR / Consignment No.", normal),
-            _pdf_paragraph(shipment.get("docket"), normal),
-            _pdf_paragraph("Booking Date", normal),
-            _pdf_paragraph(booking_date, normal)
-        ],
-        [
-            _pdf_paragraph("Expected Delivery", normal),
-            _pdf_paragraph(expected_date, normal),
-            _pdf_paragraph("Status", normal),
-            _pdf_paragraph(shipment.get("status"), normal)
-        ],
-        [
-            _pdf_paragraph("From", normal),
-            _pdf_paragraph(shipment.get("source"), normal),
-            _pdf_paragraph("To", normal),
-            _pdf_paragraph(shipment.get("destination"), normal)
-        ],
-        [
-            _pdf_paragraph("Packages", normal),
-            _pdf_paragraph(shipment.get("packages") or "-", normal),
-            _pdf_paragraph("Weight", normal),
-            _pdf_paragraph(shipment.get("weight") or "-", normal)
-        ]
+        [P("GR / CONSIGNMENT NO.", label), P(shipment.get("docket")),
+         P("BOOKING DATE", label), P(booking_date)],
+        [P("EXPECTED DELIVERY", label), P(expected_date),
+         P("STATUS", label), P(shipment.get("status"))],
+        [P("FROM", label), P(shipment.get("source")),
+         P("TO", label), P(shipment.get("destination"))],
+        [P("PACKAGES", label), P(shipment.get("packages") or "-"),
+         P("WEIGHT", label), P(shipment.get("weight") or "-")],
     ]
-
     if freight_basis.lower() == "to pay":
         info.append([
-            _pdf_paragraph("Freight Basis", normal),
-            _pdf_paragraph(freight_basis, normal),
-            _pdf_paragraph("Amount", normal),
-            _pdf_paragraph(
-                "₹ " + money_text(shipment.get("amount")),
-                normal
-            )
+            P("FREIGHT BASIS", label), P(freight_basis),
+            P("AMOUNT", label), P("₹ " + money_text(shipment.get("amount"))),
         ])
     else:
         info.append([
-            _pdf_paragraph("Freight Basis", normal),
-            _pdf_paragraph(freight_basis, normal),
-            _pdf_paragraph("", normal),
-            _pdf_paragraph("", normal)
+            P("FREIGHT BASIS", label), P(freight_basis),
+            P("", label), P(""),
         ])
 
-    info_table = Table(
-        info,
-        colWidths=[100, 175, 92, 157]
-    )
-
-    info_table.setStyle(
-        TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfcfcf")),
-            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f7f7f7")),
-            ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#f7f7f7")),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ])
-    )
-
+    info_table = Table(info, colWidths=[105, 170, 100, 149])
+    info_table.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 0.45, line),
+        ("BACKGROUND", (0, 0), (0, -1), soft),
+        ("BACKGROUND", (2, 0), (2, -1), soft),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
     story.append(info_table)
-    story.append(Spacer(1, 7))
-
-    # -------------------------
-    # CONSIGNOR / CONSIGNEE
-    # -------------------------
-    party = [
-        [
-            Paragraph("CONSIGNOR", heading),
-            Paragraph("CONSIGNEE", heading)
-        ],
-        [
-            _pdf_paragraph(
-                "Name: " + str(shipment.get("consignor") or "-"),
-                normal
-            ),
-            _pdf_paragraph(
-                "Name: " + str(shipment.get("consignee") or "-"),
-                normal
-            )
-        ],
-        [
-            _pdf_paragraph(
-                "Address: " + str(
-                    shipment.get("consignor_address") or "-"
-                ),
-                small
-            ),
-            _pdf_paragraph(
-                "Address: " + str(
-                    shipment.get("consignee_address") or "-"
-                ),
-                small
-            )
-        ],
-        [
-            _pdf_paragraph(
-                "Contact: " + str(
-                    shipment.get("consignor_contact") or "-"
-                ),
-                normal
-            ),
-            _pdf_paragraph(
-                "Contact: " + str(
-                    shipment.get("consignee_contact") or "-"
-                ),
-                normal
-            )
-        ]
-    ]
-
-    party_table = Table(
-        party,
-        colWidths=[262, 262]
-    )
-
-    party_table.setStyle(
-        TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfcfcf")),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f7f7f7")),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ])
-    )
-
-    story.append(party_table)
-    story.append(Spacer(1, 7))
-
-    # -------------------------
-    # GOODS DESCRIPTION
-    # -------------------------
-    goods_table = Table(
-        [
-            [Paragraph("GOODS DESCRIPTION", heading)],
-            [
-                _pdf_paragraph(
-                    shipment.get("goods_description") or "-",
-                    normal
-                )
-            ]
-        ],
-        colWidths=[524]
-    )
-
-    goods_table.setStyle(
-        TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfcfcf")),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f7f7f7")),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ])
-    )
-
-    story.append(goods_table)
-    story.append(Spacer(1, 8))
-
-    # -------------------------
-    # REMARKS
-    # -------------------------
-    story.append(Paragraph("REMARKS", heading))
-    story.append(
-        _pdf_paragraph(
-            shipment.get("remark") or "-",
-            normal
-        )
-    )
-
     story.append(Spacer(1, 9))
 
-    # -------------------------
-    # SHORT TERMS & CONDITIONS
-    # -------------------------
-    terms = [
-        "NO RE-BOOKING WILL BE ENTERTAINED AFTER ONE MONTH.",
-        "Company is not responsible for leakage and breakage."
+    # Consignor / consignee cards
+    party = [
+        [Paragraph("CONSIGNOR", section), Paragraph("CONSIGNEE", section)],
+        [P("Name: " + str(shipment.get("consignor") or "-")),
+         P("Name: " + str(shipment.get("consignee") or "-"))],
+        [P("Address: " + str(shipment.get("consignor_address") or "-"), small),
+         P("Address: " + str(shipment.get("consignee_address") or "-"), small)],
+        [P("Contact: " + str(shipment.get("consignor_contact") or "-")),
+         P("Contact: " + str(shipment.get("consignee_contact") or "-"))],
     ]
+    party_table = Table(party, colWidths=[262, 262])
+    party_table.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 0.45, line),
+        ("BACKGROUND", (0, 0), (-1, 0), soft),
+        ("LINEABOVE", (0, 0), (-1, 0), 1.2, gold),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(party_table)
+    story.append(Spacer(1, 9))
 
-    terms_table = Table(
-        [
-            [Paragraph("TERMS & CONDITIONS", heading)],
-            [_pdf_paragraph("1. " + terms[0], small)],
-            [_pdf_paragraph("2. " + terms[1], small)]
-        ],
-        colWidths=[524]
-    )
+    # Goods
+    goods = Table([
+        [Paragraph("GOODS DESCRIPTION", section)],
+        [P(shipment.get("goods_description") or "-")],
+    ], colWidths=[524])
+    goods.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 0.45, line),
+        ("BACKGROUND", (0, 0), (-1, 0), soft),
+        ("LINEABOVE", (0, 0), (-1, 0), 1.2, gold),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(goods)
+    story.append(Spacer(1, 9))
 
-    terms_table.setStyle(
-        TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfcfcf")),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f7f7f7")),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ])
-    )
+    # Remarks
+    remarks = Table([
+        [Paragraph("REMARKS", section)],
+        [P(shipment.get("remark") or "-")],
+    ], colWidths=[524])
+    remarks.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.45, line),
+        ("BACKGROUND", (0, 0), (-1, 0), soft),
+        ("LINEABOVE", (0, 0), (-1, 0), 1.2, gold),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(remarks)
+    story.append(Spacer(1, 10))
 
-    story.append(terms_table)
-    story.append(Spacer(1, 20))
+    # Only the two requested conditions
+    terms = Table([
+        [Paragraph("TERMS & CONDITIONS", section)],
+        [P("1. NO RE-BOOKING WILL BE ENTERTAINED AFTER ONE MONTH.", small)],
+        [P("2. Company is not responsible for leakage and breakage.", small)],
+    ], colWidths=[524])
+    terms.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 0.45, line),
+        ("BACKGROUND", (0, 0), (-1, 0), soft),
+        ("LINEABOVE", (0, 0), (-1, 0), 1.2, gold),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(terms)
+    story.append(Spacer(1, 18))
 
-    story.append(
-        Paragraph(
-            "For ANAND TRANSPORT CARRIER",
-            right
-        )
-    )
-
-    story.append(Spacer(1, 15))
-
-    story.append(
-        Paragraph(
-            "Authorized Signatory",
-            right
-        )
-    )
+    # Signature area
+    signature = Table([
+        [Paragraph("", value), Paragraph("For ANAND TRANSPORT CARRIER", right)],
+        [Paragraph("", value), Paragraph("Authorized Signatory", right)],
+    ], colWidths=[320, 204], rowHeights=[20, 20])
+    signature.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LINEABOVE", (1, 1), (1, 1), 0.6, colors.HexColor("#999999")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(signature)
 
     doc.build(story)
-
     buffer.seek(0)
-
     filename = f"{shipment['docket']}_GR.pdf"
-
-    return send_file(
-        buffer,
-        as_attachment=True,
-        download_name=filename,
-        mimetype="application/pdf"
-    )
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/pdf")
 
 
 # =========================================================
 # ADMIN DASHBOARD
+# =========================================================
 # =========================================================
 
 ADMIN_DASHBOARD_HTML = r'''
