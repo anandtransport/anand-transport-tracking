@@ -28,6 +28,19 @@ TRANSPORT_ADDRESS = "Oppsite Mishreelal Girls Collage, Dedansar Road, Jaisalmer 
 TRANSPORT_HELPLINE = "+91 7410823003"
 
 
+def format_date_ddmmyyyy(value):
+    """Convert stored dates to DD-MM-YYYY for display/PDF."""
+    if not value:
+        return "-"
+    text = str(value).strip()
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(text[:10], fmt).strftime("%d-%m-%Y")
+        except ValueError:
+            pass
+    return text
+
+
 # =========================================================
 # DATABASE CONNECTION
 # =========================================================
@@ -85,7 +98,9 @@ def init_db():
         "consignor_contact": "TEXT",
         "consignee_address": "TEXT",
         "consignee_contact": "TEXT",
-        "amount": "TEXT"
+        "amount": "TEXT",
+        "freight_basis": "TEXT",
+        "goods_description": "TEXT"
     }
 
     for column, sql_type in extra_columns.items():
@@ -569,66 +584,113 @@ def shipment_pdf(sid):
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=32, leftMargin=32,
-        topMargin=28, bottomMargin=28
+        buffer, pagesize=A4, rightMargin=28, leftMargin=28,
+        topMargin=24, bottomMargin=30
     )
     styles = getSampleStyleSheet()
-    title = ParagraphStyle("TitleATC", parent=styles["Title"], fontSize=18,
-                           leading=22, alignment=TA_CENTER, textColor=colors.HexColor("#b00000"), spaceAfter=4)
-    center = ParagraphStyle("CenterATC", parent=styles["Normal"], fontSize=9,
-                            leading=12, alignment=TA_CENTER)
-    heading = ParagraphStyle("HeadingATC", parent=styles["Heading2"], fontSize=11,
-                             leading=14, textColor=colors.HexColor("#b00000"), spaceBefore=8, spaceAfter=5)
-    small = ParagraphStyle("SmallATC", parent=styles["Normal"], fontSize=8.5, leading=11)
-    normal = ParagraphStyle("NormalATC", parent=styles["Normal"], fontSize=9.5, leading=12)
+    title = ParagraphStyle("TitleATC2", parent=styles["Title"], fontSize=19, leading=22,
+                           alignment=TA_CENTER, textColor=colors.HexColor("#b00000"), spaceAfter=3)
+    center = ParagraphStyle("CenterATC2", parent=styles["Normal"], fontSize=8.5,
+                            leading=11, alignment=TA_CENTER)
+    heading = ParagraphStyle("HeadingATC2", parent=styles["Heading2"], fontSize=10.5,
+                             leading=13, textColor=colors.HexColor("#b00000"), spaceBefore=5, spaceAfter=4)
+    normal = ParagraphStyle("NormalATC2", parent=styles["Normal"], fontSize=8.7, leading=11)
+    small = ParagraphStyle("SmallATC2", parent=styles["Normal"], fontSize=7.8, leading=9.5)
+    terms = ParagraphStyle("TermsATC2", parent=styles["Normal"], fontSize=7.3, leading=9)
+    right = ParagraphStyle("RightATC2", parent=normal, alignment=TA_RIGHT)
+
+    booking_date = format_date_ddmmyyyy(shipment.get("booking_date"))
+    expected_date = format_date_ddmmyyyy(shipment.get("expected_delivery"))
+    freight_basis = shipment.get("freight_basis") or "To Pay"
+    goods = shipment.get("goods_description") or "-"
 
     story = [
         Paragraph(TRANSPORT_NAME, title),
         Paragraph(f"GST ID: {TRANSPORT_GST} | Helpline: {TRANSPORT_HELPLINE}", center),
         Paragraph(TRANSPORT_ADDRESS, center),
-        Spacer(1, 10),
+        Spacer(1, 7),
         Paragraph("CONSIGNMENT / GR BOOKING RECEIPT", heading),
     ]
 
     info = [
         [_pdf_paragraph("GR / Consignment No.", normal), _pdf_paragraph(shipment["docket"], normal),
-         _pdf_paragraph("Booking Date", normal), _pdf_paragraph(shipment["booking_date"], normal)],
-        [_pdf_paragraph("Expected Delivery", normal), _pdf_paragraph(shipment.get("expected_delivery"), normal),
+         _pdf_paragraph("Booking Date", normal), _pdf_paragraph(booking_date, normal)],
+        [_pdf_paragraph("Expected Delivery", normal), _pdf_paragraph(expected_date, normal),
          _pdf_paragraph("Status", normal), _pdf_paragraph(shipment["status"], normal)],
         [_pdf_paragraph("From", normal), _pdf_paragraph(shipment["source"], normal),
          _pdf_paragraph("To", normal), _pdf_paragraph(shipment["destination"], normal)],
         [_pdf_paragraph("Packages", normal), _pdf_paragraph(shipment.get("packages"), normal),
-         _pdf_paragraph("Weight", normal), _pdf_paragraph(shipment.get("weight"), normal)],
-        [_pdf_paragraph("Amount", normal), _pdf_paragraph(shipment.get("amount"), normal),
-         _pdf_paragraph("Booking Status", normal), _pdf_paragraph("BOOKED", normal)],
+         _pdf_paragraph("Weight", normal), _pdf_paragraph(shipment.get("weight") or "-", normal)],
+        [_pdf_paragraph("Freight Basis", normal), _pdf_paragraph(freight_basis, normal),
+         _pdf_paragraph("Amount", normal), _pdf_paragraph(shipment.get("amount") or "-", normal)],
     ]
-    t = Table(info, colWidths=[105, 170, 100, 150])
+    t = Table(info, colWidths=[100, 174, 92, 157])
     t.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cccccc")),
         ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#f7f7f7")),
         ("BACKGROUND", (2,0), (2,-1), colors.HexColor("#f7f7f7")),
         ("VALIGN", (0,0), (-1,-1), "TOP"),
-        ("LEFTPADDING", (0,0), (-1,-1), 6), ("RIGHTPADDING", (0,0), (-1,-1), 6),
-        ("TOPPADDING", (0,0), (-1,-1), 6), ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+        ("LEFTPADDING", (0,0), (-1,-1), 5), ("RIGHTPADDING", (0,0), (-1,-1), 5),
+        ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5),
     ]))
     story.append(t)
 
     party = [
         [Paragraph("CONSIGNOR", heading), Paragraph("CONSIGNEE", heading)],
-        [_pdf_paragraph(f"Name: {shipment.get('consignor')}", normal), _pdf_paragraph(f"Name: {shipment.get('consignee')}", normal)],
-        [_pdf_paragraph(f"Address: {shipment.get('consignor_address')}", small), _pdf_paragraph(f"Address: {shipment.get('consignee_address')}", small)],
-        [_pdf_paragraph(f"Contact: {shipment.get('consignor_contact')}", normal), _pdf_paragraph(f"Contact: {shipment.get('consignee_contact')}", normal)],
+        [_pdf_paragraph(f"Name: {shipment.get('consignor') or '-'}", normal),
+         _pdf_paragraph(f"Name: {shipment.get('consignee') or '-'}", normal)],
+        [_pdf_paragraph(f"Address: {shipment.get('consignor_address') or '-'}", small),
+         _pdf_paragraph(f"Address: {shipment.get('consignee_address') or '-'}", small)],
+        [_pdf_paragraph(f"Contact: {shipment.get('consignor_contact') or '-'}", normal),
+         _pdf_paragraph(f"Contact: {shipment.get('consignee_contact') or '-'}", normal)],
     ]
-    pt = Table(party, colWidths=[270, 270])
+    pt = Table(party, colWidths=[262, 262])
     pt.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cccccc")),
         ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#f7f7f7")),
         ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6), ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+    ]))
+    story += [pt, Spacer(1, 7)]
+
+    goods_table = Table([
+        [Paragraph("GOODS DESCRIPTION", heading)],
+        [_pdf_paragraph(goods, normal)]
+    ], colWidths=[524])
+    goods_table.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cccccc")),
+        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#f7f7f7")),
+        ("LEFTPADDING", (0,0), (-1,-1), 6), ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+    ]))
+    story += [goods_table, Spacer(1, 7)]
+
+    story += [
+        Paragraph("REMARKS", heading),
+        _pdf_paragraph(shipment.get("remark") or "-", normal),
+        Spacer(1, 7),
+        Paragraph("TERMS & CONDITIONS", heading),
+    ]
+    terms_text = (
+        "1. Goods are accepted for transportation subject to applicable transport rules and conditions. "
+        "2. Consignor is responsible for correct packing, description, quantity, weight and declaration of goods. "
+        "3. Delivery is subject to route, service availability and receipt of necessary documents. "
+        "4. Freight and other charges are payable according to the selected Freight Basis. "
+        "5. Transit time is indicative and may vary due to operational, weather, traffic or other unavoidable reasons. "
+        "6. Any shortage or damage should be reported at the time of delivery and acknowledged on the delivery record. "
+        "7. The carrier shall not be responsible for prohibited, undeclared or improperly packed goods. "
+        "8. This receipt should be retained by the customer for reference and delivery purposes."
+    )
+    terms_box = Table([[Paragraph(terms_text, terms)]], colWidths=[524])
+    terms_box.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 0.5, colors.HexColor("#cccccc")),
+        ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#fafafa")),
         ("LEFTPADDING", (0,0), (-1,-1), 7), ("RIGHTPADDING", (0,0), (-1,-1), 7),
         ("TOPPADDING", (0,0), (-1,-1), 6), ("BOTTOMPADDING", (0,0), (-1,-1), 6),
     ]))
-    story += [pt, Spacer(1, 10), Paragraph("Remarks", heading), _pdf_paragraph(shipment.get("remark") or "-", normal)]
-    story += [Spacer(1, 20), Paragraph("For ANAND TRANSPORT CARRIER", ParagraphStyle("Right", parent=normal, alignment=TA_RIGHT))]
+    story += [terms_box, Spacer(1, 14), Paragraph("For ANAND TRANSPORT CARRIER", right)]
+
     doc.build(story)
     buffer.seek(0)
     filename = f"{shipment['docket']}_GR.pdf"
@@ -660,14 +722,14 @@ ADMIN_DASHBOARD_HTML = r'''
 BOOKING_FORM_HTML = r'''
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>New Booking - Anand Transport</title>
 <style>
-:root{--red:#b40000;--gold:#f0a900;--bg:#f5f7fb;--ink:#172033;--muted:#687083;--line:#e1e5ec}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}.nav{height:78px;background:#fff;border-bottom:3px solid var(--gold);display:flex;justify-content:space-between;align-items:center;padding:0 4%}.brand{display:flex;align-items:center;gap:12px}.logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#e51b00,#ffb000);display:grid;place-items:center;color:#fff;font-weight:900}.brand h1{font-size:20px;color:#b00000;margin:0}.brand small{color:#555}.nav a{text-decoration:none;color:#111;font-weight:700}.wrap{max-width:1100px;margin:0 auto;padding:28px 4% 50px}.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.head h2{margin:0;font-size:27px}.head p{margin:6px 0;color:var(--muted)}.back{color:#222;text-decoration:none;font-weight:700}.card{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 4px 18px #0000000b;margin-bottom:18px;overflow:hidden}.ct{padding:15px 20px;background:#fff8e8;border-bottom:1px solid #f1e0b4;color:#8a5600;font-weight:900}.cb{padding:20px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:6px}.field input,.field textarea{width:100%;border:1px solid #d5d9e1;border-radius:8px;padding:11px;font-size:14px;outline:none}.field input:focus,.field textarea:focus{border-color:#c00000;box-shadow:0 0 0 3px #c0000012}.field textarea{min-height:80px;resize:vertical}.full{grid-column:1/-1}.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}.btn{padding:12px 18px;border-radius:9px;font-weight:900;text-decoration:none;border:0;cursor:pointer}.primary{background:var(--red);color:#fff}.secondary{background:#fff;color:#222;border:1px solid var(--line)}.hint{font-size:12px;color:var(--muted);margin-top:5px}.notice{padding:13px 15px;background:#eef6ff;border:1px solid #cfe3fb;border-radius:10px;color:#155a8f;font-size:13px;font-weight:700;margin-bottom:18px}@media(max-width:700px){.grid,.grid3{grid-template-columns:1fr}.head{align-items:flex-start;gap:10px;flex-direction:column}.nav{height:auto;padding:12px 4%}.brand h1{font-size:16px}}
+:root{--red:#b40000;--gold:#f0a900;--bg:#f5f7fb;--ink:#172033;--muted:#687083;--line:#e1e5ec}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}.nav{height:78px;background:#fff;border-bottom:3px solid var(--gold);display:flex;justify-content:space-between;align-items:center;padding:0 4%}.brand{display:flex;align-items:center;gap:12px}.logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#e51b00,#ffb000);display:grid;place-items:center;color:#fff;font-weight:900}.brand h1{font-size:20px;color:#b00000;margin:0}.brand small{color:#555}.nav a{text-decoration:none;color:#111;font-weight:700}.wrap{max-width:1100px;margin:0 auto;padding:28px 4% 50px}.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.head h2{margin:0;font-size:27px}.head p{margin:6px 0;color:var(--muted)}.back{color:#222;text-decoration:none;font-weight:700}.card{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 4px 18px #0000000b;margin-bottom:18px;overflow:hidden}.ct{padding:15px 20px;background:#fff8e8;border-bottom:1px solid #f1e0b4;color:#8a5600;font-weight:900}.cb{padding:20px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:6px}.field input,.field textarea,.field select{width:100%;border:1px solid #d5d9e1;border-radius:8px;padding:11px;font-size:14px;outline:none}.field input:focus,.field textarea:focus{border-color:#c00000;box-shadow:0 0 0 3px #c0000012}.field textarea{min-height:80px;resize:vertical}.full{grid-column:1/-1}.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}.btn{padding:12px 18px;border-radius:9px;font-weight:900;text-decoration:none;border:0;cursor:pointer}.primary{background:var(--red);color:#fff}.secondary{background:#fff;color:#222;border:1px solid var(--line)}.hint{font-size:12px;color:var(--muted);margin-top:5px}.notice{padding:13px 15px;background:#eef6ff;border:1px solid #cfe3fb;border-radius:10px;color:#155a8f;font-size:13px;font-weight:700;margin-bottom:18px}@media(max-width:700px){.grid,.grid3{grid-template-columns:1fr}.head{align-items:flex-start;gap:10px;flex-direction:column}.nav{height:auto;padding:12px 4%}.brand h1{font-size:16px}}
 </style></head><body><header class="nav"><div class="brand"><div class="logo">ATC</div><div><h1>Anand Transport Company</h1><small>Reliable • Fast • Nationwide</small></div></div><a href="{{ url_for('admin') }}">← Admin Dashboard</a></header>
 <main class="wrap"><div class="head"><div><h2>New Shipment Booking</h2><p>Create GR/Consignment and put it directly into customer tracking.</p></div></div><div class="notice">After booking, the shipment status will automatically be <strong>BOOKED</strong>. Customer can track it using the GR/Consignment number. PDF download is available only inside Admin Dashboard.</div>
 <form method="POST"><section class="card"><div class="ct">📦 Booking Details</div><div class="cb"><div class="grid3"><div class="field"><label>Consignment / GR No.</label><input name="docket" value="{{ default_gr }}" required><div class="hint">You can replace the auto-generated number.</div></div><div class="field"><label>Booking Date</label><input type="date" name="booking_date" value="{{ today }}" required></div><div class="field"><label>Expected Delivery Date</label><input type="date" name="expected_delivery"></div></div></div></section>
 <section class="card"><div class="ct">🚚 Route</div><div class="cb"><div class="grid"><div class="field"><label>From</label><input name="source" placeholder="Origin location" required></div><div class="field"><label>To</label><input name="destination" placeholder="Destination location" required></div></div></div></section>
 <section class="card"><div class="ct">👤 Consignor</div><div class="cb"><div class="grid"><div class="field"><label>Consignor Name</label><input name="consignor" required></div><div class="field"><label>Contact Number</label><input name="consignor_contact"></div><div class="field full"><label>Address</label><textarea name="consignor_address"></textarea></div></div></div></section>
 <section class="card"><div class="ct">👤 Consignee</div><div class="cb"><div class="grid"><div class="field"><label>Consignee Name</label><input name="consignee" required></div><div class="field"><label>Contact Number</label><input name="consignee_contact"></div><div class="field full"><label>Address</label><textarea name="consignee_address"></textarea></div></div></div></section>
-<section class="card"><div class="ct">⚖️ Package & Charges</div><div class="cb"><div class="grid3"><div class="field"><label>Packages</label><input type="number" min="1" name="packages" value="1" required></div><div class="field"><label>Weight (kg)</label><input name="weight" placeholder="e.g. 25 kg"></div><div class="field"><label>Amount (₹)</label><input name="amount" placeholder="e.g. 1250"></div></div></div></section>
+<section class="card"><div class="ct">📦 Goods & Charges</div><div class="cb"><div class="grid3"><div class="field"><label>Packages</label><input type="number" min="1" name="packages" value="1" required></div><div class="field"><label>Weight (kg)</label><input name="weight" placeholder="e.g. 25 kg"></div><div class="field"><label>Amount (₹)</label><input name="amount" placeholder="e.g. 1250"></div></div><div class="grid" style="margin-top:16px"><div class="field"><label>Freight Basis</label><select name="freight_basis" required><option value="To Pay">To Pay</option><option value="Paid">Paid</option><option value="TBB">TBB</option></select></div><div class="field"><label>Goods Description</label><input name="goods_description" placeholder="e.g. Electrical Items, Spare Parts, Machinery"></div></div></div></section>
 <section class="card"><div class="ct">📝 Remarks</div><div class="cb"><div class="grid"><div class="field"><label>Booking Time</label><input type="time" name="event_time"></div><div class="field"><label>Remark</label><input name="remark" placeholder="Optional remark"></div></div></div></section>
 <div class="actions"><a class="btn secondary" href="{{ url_for('admin') }}">Cancel</a><button class="btn primary" type="submit">✓ Book Shipment</button></div></form></main></body></html>
 '''
@@ -737,6 +799,8 @@ def new_shipment():
     packages = int(data.get("packages") or 1)
     weight = data.get("weight", "").strip()
     amount = data.get("amount", "").strip()
+    freight_basis = data.get("freight_basis", "To Pay").strip() or "To Pay"
+    goods_description = data.get("goods_description", "").strip()
     expected_delivery = data.get("expected_delivery", "").strip()
     remark = data.get("remark", "").strip()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -756,14 +820,14 @@ def new_shipment():
             (docket, booking_date, source, destination, consignor, consignee,
              packages, weight, status, location, expected_delivery, remark,
              created_at, updated_at, consignor_address, consignor_contact,
-             consignee_address, consignee_contact, amount)
-            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+             consignee_address, consignee_contact, amount, freight_basis, goods_description)
+            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             RETURNING id
             """,
             (docket, booking_date, source, destination, consignor, consignee,
              packages, weight, "Booked", source, expected_delivery, remark,
              now, now, consignor_address, consignor_contact,
-             consignee_address, consignee_contact, amount)
+             consignee_address, consignee_contact, amount, freight_basis, goods_description)
         )
         sid = cur.fetchone()["id"]
 
