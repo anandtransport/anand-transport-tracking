@@ -20,7 +20,7 @@ from reportlab.platypus import (
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
-
+from decimal import Decimal
 
 app = Flask(__name__)
 
