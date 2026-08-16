@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+from flask import Flask, render_template, render_template_string, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
@@ -413,223 +413,6 @@ def admin_login():
 
 
 # =========================================================
-# CHANGE ADMIN LOGIN DETAILS
-# =========================================================
-
-@app.route("/admin/change-credentials", methods=["GET", "POST"])
-@login_required
-def change_credentials():
-
-    if request.method == "POST":
-
-        current_password = request.form.get(
-            "current_password",
-            ""
-        )
-
-        new_username = request.form.get(
-            "new_username",
-            ""
-        ).strip()
-
-        new_password = request.form.get(
-            "new_password",
-            ""
-        )
-
-        confirm_password = request.form.get(
-            "confirm_password",
-            ""
-        )
-
-        if not new_username or not new_password:
-            flash("Username and password cannot be empty.")
-            return redirect(url_for("change_credentials"))
-
-        if new_password != confirm_password:
-            flash("New password and confirm password do not match.")
-            return redirect(url_for("change_credentials"))
-
-        if len(new_password) < 6:
-            flash("New password must be at least 6 characters long.")
-            return redirect(url_for("change_credentials"))
-
-        con = db()
-        cur = con.cursor()
-
-        try:
-            # Get currently logged-in admin
-            cur.execute(
-                """
-                SELECT *
-                FROM users
-                WHERE id=%s
-                """,
-                (session["admin_id"],)
-            )
-
-            user = cur.fetchone()
-
-            if not user or not check_password_hash(
-                user["password_hash"],
-                current_password
-            ):
-                flash("Current password is incorrect.")
-                return redirect(url_for("change_credentials"))
-
-            # Check whether the new username already belongs to another user
-            cur.execute(
-                """
-                SELECT id
-                FROM users
-                WHERE username=%s
-                  AND id<>%s
-                """,
-                (new_username, session["admin_id"])
-            )
-
-            if cur.fetchone():
-                flash("This username is already in use.")
-                return redirect(url_for("change_credentials"))
-
-            # Update username and hashed password
-            cur.execute(
-                """
-                UPDATE users
-                SET username=%s, password_hash=%s
-                WHERE id=%s
-                """,
-                (
-                    new_username,
-                    generate_password_hash(new_password),
-                    session["admin_id"]
-                )
-            )
-
-            con.commit()
-
-            # Keep session username in sync
-            session["admin_username"] = new_username
-
-            flash("Admin username and password changed successfully.")
-            return redirect(url_for("admin"))
-
-        except psycopg2.IntegrityError:
-            con.rollback()
-            flash("This username is already in use.")
-
-        finally:
-            cur.close()
-            con.close()
-
-    # Standalone page so no extra HTML template file is required.
-    current_username = session.get("admin_username", "")
-
-    return f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Change Admin Login</title>
-        <style>
-            body {{
-                font-family: Arial, sans-serif;
-                background: #f5f5f5;
-                margin: 0;
-                padding: 40px 20px;
-            }}
-            .box {{
-                max-width: 520px;
-                margin: auto;
-                background: white;
-                padding: 30px;
-                border-radius: 12px;
-                box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-            }}
-            h2 {{ margin-top: 0; }}
-            label {{
-                display: block;
-                margin-top: 15px;
-                margin-bottom: 6px;
-                font-weight: bold;
-            }}
-            input {{
-                width: 100%;
-                box-sizing: border-box;
-                padding: 11px;
-                border: 1px solid #bbb;
-                border-radius: 6px;
-                font-size: 15px;
-            }}
-            button {{
-                margin-top: 22px;
-                padding: 11px 18px;
-                border: 0;
-                border-radius: 6px;
-                background: #c40000;
-                color: white;
-                font-weight: bold;
-                cursor: pointer;
-            }}
-            .back {{
-                display: inline-block;
-                margin-left: 10px;
-                color: #333;
-                text-decoration: none;
-            }}
-            .note {{
-                color: #555;
-                font-size: 14px;
-                margin-top: 8px;
-            }}
-            .flash {{
-                background: #fff3cd;
-                border: 1px solid #ffe69c;
-                padding: 10px;
-                border-radius: 6px;
-                margin-bottom: 15px;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="box">
-            <h2>Change Admin Login</h2>
-            <p>Current username: <strong>{current_username}</strong></p>
-
-            {{% with messages = get_flashed_messages() %}}
-                {{% if messages %}}
-                    {{% for message in messages %}}
-                        <div class="flash">{{{{ message }}}}</div>
-                    {{% endfor %}}
-                {{% endif %}}
-            {{% endwith %}}
-
-            <form method="POST">
-                <label>Current Password</label>
-                <input type="password" name="current_password" required>
-
-                <label>New Username</label>
-                <input type="text" name="new_username" value="{current_username}" required>
-
-                <label>New Password</label>
-                <input type="password" name="new_password" minlength="6" required>
-
-                <label>Confirm New Password</label>
-                <input type="password" name="confirm_password" minlength="6" required>
-
-                <button type="submit">Save New Login Details</button>
-                <a class="back" href="/admin">Back to Admin</a>
-            </form>
-
-            <p class="note">Password must be at least 6 characters.</p>
-        </div>
-    </body>
-    </html>
-    """
-
-
-# =========================================================
 # LOGOUT
 # =========================================================
 
@@ -640,6 +423,180 @@ def logout():
 
     return redirect(
         url_for("home")
+    )
+
+
+# =========================================================
+# CHANGE ADMIN USERNAME / PASSWORD
+# =========================================================
+
+@app.route("/admin/change-credentials", methods=["GET", "POST"])
+def change_credentials():
+
+    if request.method == "POST":
+
+        current_username = request.form.get("current_username", "").strip()
+        current_password = request.form.get("current_password", "")
+        new_username = request.form.get("new_username", "").strip()
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not current_username or not new_username or not new_password:
+            flash("Username and password are required.")
+            return redirect(url_for("change_credentials"))
+
+        if len(new_password) < 6:
+            flash("New password must be at least 6 characters long.")
+            return redirect(url_for("change_credentials"))
+
+        if new_password != confirm_password:
+            flash("New password and confirm password do not match.")
+            return redirect(url_for("change_credentials"))
+
+        con = db()
+        cur = con.cursor()
+
+        try:
+            cur.execute(
+                "SELECT * FROM users WHERE username=%s",
+                (current_username,)
+            )
+            user = cur.fetchone()
+
+            if not user or not check_password_hash(
+                user["password_hash"],
+                current_password
+            ):
+                flash("Current password is incorrect.")
+                return redirect(url_for("change_credentials"))
+
+            cur.execute(
+                "SELECT id FROM users WHERE username=%s AND id<>%s",
+                (new_username, user["id"])
+            )
+
+            if cur.fetchone():
+                flash("This username is already in use.")
+                return redirect(url_for("change_credentials"))
+
+            cur.execute(
+                """
+                UPDATE users
+                SET username=%s, password_hash=%s
+                WHERE id=%s
+                """,
+                (
+                    new_username,
+                    generate_password_hash(new_password),
+                    user["id"]
+                )
+            )
+
+            con.commit()
+
+            session["admin_username"] = new_username
+
+            flash("Admin username and password changed successfully.")
+            return redirect(url_for("admin"))
+
+        except Exception:
+            con.rollback()
+            flash("Unable to change login details. Please try again.")
+            return redirect(url_for("change_credentials"))
+
+        finally:
+            cur.close()
+            con.close()
+
+    return render_template_string(
+        """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Change Admin Login</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    background: #f5f5f5;
+                    margin: 0;
+                    padding: 40px 20px;
+                }
+                .box {
+                    max-width: 500px;
+                    margin: auto;
+                    background: white;
+                    padding: 30px;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+                }
+                h2 {
+                    margin-top: 0;
+                }
+                label {
+                    display: block;
+                    margin-top: 15px;
+                    margin-bottom: 6px;
+                    font-weight: bold;
+                }
+                input {
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 11px;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    font-size: 15px;
+                }
+                button {
+                    margin-top: 22px;
+                    padding: 11px 18px;
+                    border: none;
+                    border-radius: 6px;
+                    background: #c00;
+                    color: white;
+                    font-size: 15px;
+                    cursor: pointer;
+                }
+                .back {
+                    display: inline-block;
+                    margin-left: 10px;
+                    text-decoration: none;
+                }
+                .note {
+                    color: #555;
+                    font-size: 14px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="box">
+                <h2>Change Admin Login</h2>
+                <p class="note">Enter your current password and choose a new username and password.</p>
+
+                <form method="POST">
+                    <label>Current Username</label>
+                    <input type="text" name="current_username" value="{{ session.get('admin_username', '') }}" required>
+
+                    <label>Current Password</label>
+                    <input type="password" name="current_password" required>
+
+                    <label>New Username</label>
+                    <input type="text" name="new_username" value="{{ session.get('admin_username', '') }}" required>
+
+                    <label>New Password</label>
+                    <input type="password" name="new_password" minlength="6" required>
+
+                    <label>Confirm New Password</label>
+                    <input type="password" name="confirm_password" minlength="6" required>
+
+                    <button type="submit">Save New Login Details</button>
+                    <a class="back" href="{{ url_for('admin') }}">Back to Admin</a>
+                </form>
+            </div>
+        </body>
+        </html>
+        """
     )
 
 
