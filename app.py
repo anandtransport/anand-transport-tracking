@@ -855,12 +855,556 @@ def new_shipment():
 # EDIT SHIPMENT
 # =========================================================
 
+# =========================================================
+# EDIT SHIPMENT
+# =========================================================
+
 @app.route(
     "/admin/shipment/<int:sid>/edit",
     methods=["GET", "POST"]
 )
 @login_required
 def edit_shipment(sid):
+
+    con = db()
+    cur = con.cursor()
+
+    # -----------------------------------------------------
+    # GET EXISTING SHIPMENT
+    # -----------------------------------------------------
+
+    cur.execute(
+        """
+        SELECT *
+        FROM shipments
+        WHERE id=%s
+        """,
+        (sid,)
+    )
+
+    old = cur.fetchone()
+
+    if not old:
+        cur.close()
+        con.close()
+        return "Shipment not found", 404
+
+    # =====================================================
+    # GET REQUEST
+    # =====================================================
+
+    if request.method == "GET":
+
+        cur.execute(
+            """
+            SELECT *
+            FROM tracking_events
+            WHERE shipment_id=%s
+            ORDER BY event_time DESC, id DESC
+            LIMIT 1
+            """,
+            (sid,)
+        )
+
+        latest_event = cur.fetchone()
+
+        cur.close()
+        con.close()
+
+        return render_template(
+            "shipment_form.html",
+            shipment=old,
+            latest_event=latest_event
+        )
+
+    # =====================================================
+    # POST REQUEST
+    # =====================================================
+
+    data = request.form
+
+    # -----------------------------------------------------
+    # BASIC SHIPMENT DATA
+    # -----------------------------------------------------
+
+    docket = data.get("docket", "").strip()
+
+    booking_date = data.get(
+        "booking_date",
+        ""
+    ).strip()
+
+    source = data.get(
+        "source",
+        ""
+    ).strip()
+
+    destination = data.get(
+        "destination",
+        ""
+    ).strip()
+
+    consignor = data.get(
+        "consignor",
+        ""
+    ).strip()
+
+    consignor_contact = data.get(
+        "consignor_contact",
+        ""
+    ).strip()
+
+    consignor_address = data.get(
+        "consignor_address",
+        ""
+    ).strip()
+
+    consignee = data.get(
+        "consignee",
+        ""
+    ).strip()
+
+    consignee_contact = data.get(
+        "consignee_contact",
+        ""
+    ).strip()
+
+    consignee_address = data.get(
+        "consignee_address",
+        ""
+    ).strip()
+
+    packages = int(
+        data.get("packages") or 1
+    )
+
+    weight = data.get(
+        "weight",
+        ""
+    ).strip()
+
+    # -----------------------------------------------------
+    # CHARGES / GOODS
+    # -----------------------------------------------------
+
+    amount = data.get(
+        "amount",
+        ""
+    ).strip()
+
+    freight_basis = data.get(
+        "freight_basis",
+        "To Pay"
+    ).strip()
+
+    if freight_basis not in [
+        "To Pay",
+        "Paid",
+        "TBB"
+    ]:
+        freight_basis = "To Pay"
+
+    goods_description = data.get(
+        "goods_description",
+        ""
+    ).strip()
+
+    # -----------------------------------------------------
+    # STATUS / LOCATION
+    # -----------------------------------------------------
+
+    status = data.get(
+        "status",
+        "Booked"
+    ).strip()
+
+    location = data.get(
+        "location",
+        ""
+    ).strip()
+
+    expected_delivery = data.get(
+        "expected_delivery",
+        ""
+    ).strip()
+
+    remark = data.get(
+        "remark",
+        ""
+    ).strip()
+
+    # -----------------------------------------------------
+    # EVENT DATE / TIME
+    # -----------------------------------------------------
+
+    event_date = data.get(
+        "event_date",
+        ""
+    ).strip()
+
+    event_time = data.get(
+        "event_time",
+        ""
+    ).strip()
+
+    if not event_date:
+        event_date = booking_date
+
+    if not event_time:
+        event_time = "10:00"
+
+    manual_event_time = (
+        f"{event_date} {event_time}:00"
+    )
+
+    # -----------------------------------------------------
+    # INTERNAL UPDATE TIME
+    # -----------------------------------------------------
+
+    now = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    # =====================================================
+    # VALIDATION
+    # =====================================================
+
+    if not docket:
+        flash("Docket / AWB number is required.")
+        cur.close()
+        con.close()
+        return redirect(
+            url_for(
+                "edit_shipment",
+                sid=sid
+            )
+        )
+
+    if not booking_date:
+        flash("Booking date is required.")
+        cur.close()
+        con.close()
+        return redirect(
+            url_for(
+                "edit_shipment",
+                sid=sid
+            )
+        )
+
+    if not source or not destination:
+        flash("From and To locations are required.")
+        cur.close()
+        con.close()
+        return redirect(
+            url_for(
+                "edit_shipment",
+                sid=sid
+            )
+        )
+
+    # =====================================================
+    # UPDATE SHIPMENT MASTER DATA
+    # =====================================================
+
+    try:
+
+        cur.execute(
+            """
+            UPDATE shipments
+            SET
+                docket=%s,
+                booking_date=%s,
+                source=%s,
+                destination=%s,
+
+                consignor=%s,
+                consignor_address=%s,
+                consignor_contact=%s,
+
+                consignee=%s,
+                consignee_address=%s,
+                consignee_contact=%s,
+
+                packages=%s,
+                weight=%s,
+
+                status=%s,
+                location=%s,
+                expected_delivery=%s,
+                remark=%s,
+
+                amount=%s,
+                freight_basis=%s,
+                goods_description=%s,
+
+                updated_at=%s
+
+            WHERE id=%s
+            """,
+            (
+                docket,
+                booking_date,
+                source,
+                destination,
+
+                consignor,
+                consignor_address,
+                consignor_contact,
+
+                consignee,
+                consignee_address,
+                consignee_contact,
+
+                packages,
+                weight,
+
+                status,
+                location,
+                expected_delivery,
+                remark,
+
+                amount,
+                freight_basis,
+                goods_description,
+
+                now,
+                sid
+            )
+        )
+
+        # =================================================
+        # FIND ORIGINAL BOOKED EVENT
+        # =================================================
+
+        cur.execute(
+            """
+            SELECT *
+            FROM tracking_events
+            WHERE shipment_id=%s
+              AND status='Booked'
+            ORDER BY event_time ASC, id ASC
+            LIMIT 1
+            """,
+            (sid,)
+        )
+
+        booked_event = cur.fetchone()
+
+        # =================================================
+        # REMOVE DUPLICATE BOOKED EVENTS
+        # Keep only oldest Booked event.
+        # =================================================
+
+        if booked_event:
+
+            cur.execute(
+                """
+                DELETE FROM tracking_events
+                WHERE shipment_id=%s
+                  AND status='Booked'
+                  AND id<>%s
+                """,
+                (
+                    sid,
+                    booked_event["id"]
+                )
+            )
+
+        # =================================================
+        # IF CURRENT STATUS IS BOOKED
+        # =================================================
+
+        if status == "Booked":
+
+            if booked_event:
+
+                cur.execute(
+                    """
+                    UPDATE tracking_events
+                    SET
+                        location=%s,
+                        remark=%s,
+                        event_time=%s
+                    WHERE id=%s
+                    """,
+                    (
+                        source,
+                        "Shipment booked.",
+                        manual_event_time,
+                        booked_event["id"]
+                    )
+                )
+
+            else:
+
+                cur.execute(
+                    """
+                    INSERT INTO tracking_events
+                    (
+                        shipment_id,
+                        status,
+                        location,
+                        remark,
+                        event_time
+                    )
+                    VALUES(%s,%s,%s,%s,%s)
+                    """,
+                    (
+                        sid,
+                        "Booked",
+                        source,
+                        "Shipment booked.",
+                        manual_event_time
+                    )
+                )
+
+        # =================================================
+        # STATUS IS NOT BOOKED
+        # =================================================
+
+        else:
+
+            # ---------------------------------------------
+            # Find latest event of selected status
+            # ---------------------------------------------
+
+            cur.execute(
+                """
+                SELECT *
+                FROM tracking_events
+                WHERE shipment_id=%s
+                  AND status=%s
+                ORDER BY event_time DESC, id DESC
+                LIMIT 1
+                """,
+                (
+                    sid,
+                    status
+                )
+            )
+
+            same_status_event = cur.fetchone()
+
+            # ---------------------------------------------
+            # STATUS CHANGED
+            # Create a NEW tracking event.
+            # ---------------------------------------------
+
+            if status != old["status"]:
+
+                cur.execute(
+                    """
+                    INSERT INTO tracking_events
+                    (
+                        shipment_id,
+                        status,
+                        location,
+                        remark,
+                        event_time
+                    )
+                    VALUES(%s,%s,%s,%s,%s)
+                    """,
+                    (
+                        sid,
+                        status,
+                        location,
+                        remark,
+                        manual_event_time
+                    )
+                )
+
+            # ---------------------------------------------
+            # SAME STATUS
+            # Update existing event.
+            # Do not create duplicate.
+            # ---------------------------------------------
+
+            elif same_status_event:
+
+                cur.execute(
+                    """
+                    UPDATE tracking_events
+                    SET
+                        location=%s,
+                        remark=%s,
+                        event_time=%s
+                    WHERE id=%s
+                    """,
+                    (
+                        location,
+                        remark,
+                        manual_event_time,
+                        same_status_event["id"]
+                    )
+                )
+
+            # ---------------------------------------------
+            # No event exists for this status.
+            # ---------------------------------------------
+
+            else:
+
+                cur.execute(
+                    """
+                    INSERT INTO tracking_events
+                    (
+                        shipment_id,
+                        status,
+                        location,
+                        remark,
+                        event_time
+                    )
+                    VALUES(%s,%s,%s,%s,%s)
+                    """,
+                    (
+                        sid,
+                        status,
+                        location,
+                        remark,
+                        manual_event_time
+                    )
+                )
+
+        # =================================================
+        # SAVE EVERYTHING
+        # =================================================
+
+        con.commit()
+
+        flash(
+            "Shipment updated successfully."
+        )
+
+    except psycopg2.IntegrityError:
+
+        con.rollback()
+
+        flash(
+            "Docket / AWB number already exists. "
+            "Please use another number."
+        )
+
+    except Exception as e:
+
+        con.rollback()
+
+        print(
+            "EDIT SHIPMENT ERROR:",
+            str(e)
+        )
+
+        flash(
+            "Unable to update shipment. Please try again."
+        )
+
+    finally:
+
+        cur.close()
+        con.close()
+
+    return redirect(
+        url_for("admin")
+    )
 
     con = db()
     cur = con.cursor()
