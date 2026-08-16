@@ -2741,30 +2741,30 @@ FROM shipments
     # Total Amount
     # This includes amount regardless of Freight Basis:
     # Paid / TBB / To Pay
-cur.execute(
-    f"""
-    SELECT COALESCE(
-        SUM(
-            CASE
-                WHEN TRIM(amount::text) = '' THEN 0
-                ELSE CAST(amount AS NUMERIC)
-            END
-        ),
-        0
-    ) AS total_amount
-    FROM shipments
-    {date_condition}
-    """,
-    date_params
-)
+    cur.execute(
+        f"""
+        SELECT COALESCE(
+            SUM(
+                CASE
+                    WHEN TRIM(amount::text) = '' THEN 0
+                    ELSE CAST(amount AS NUMERIC)
+                END
+            ),
+            0
+        ) AS total_amount
+        FROM shipments
+        {date_condition}
+        """,
+        date_params
+    )
 
-total_amount = cur.fetchone()["total_amount"] or 0
+    total_amount = cur.fetchone()["total_amount"] or 0
 
-       # ============================================================
+    # ============================================================
     # PAID / TBB / TO PAY BREAKUP
     # ============================================================
 
-cur.execute(
+    cur.execute(
         f"""
         SELECT
             COALESCE(
