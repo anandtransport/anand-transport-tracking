@@ -3968,33 +3968,6 @@ def generate_receipt_no():
     finally:
         cur.close()
         con.close()
-    con = db()
-    cur = con.cursor()
-
-    prefix = datetime.now().strftime(
-        "MR-%Y%m%d"
-    )
-
-    cur.execute(
-        """
-        SELECT COUNT(*) AS c
-        FROM money_receipts
-        WHERE receipt_no LIKE %s
-        """,
-        (
-            prefix + "%"
-        )
-    )
-
-    count = cur.fetchone()["c"] + 1
-
-    cur.close()
-    con.close()
-
-    return (
-        f"{prefix}-{count:04d}"
-    )
-
 
 # =========================================================
 # MONEY RECEIPT
