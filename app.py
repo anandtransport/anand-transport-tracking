@@ -4146,37 +4146,57 @@ def delete_shipment(sid):
 # MONEY RECEIPT NUMBER
 # =========================================================
 
-def generate_receipt_no():
+def generate_receipt_no(con=None, cur=None):
 
-    con = db()
-    cur = con.cursor()
+    # Fixed Money Receipt series as requested:
+    # MR-202601-0001, MR-202601-0002, ...
+    #
+    # IMPORTANT: Do not use COUNT() here. COUNT() can generate a number
+    # that already exists when a receipt was deleted or when two requests
+    # arrive at nearly the same time. A transaction-level PostgreSQL
+    # advisory lock + MAX() keeps the number unique.
+    prefix = "MR-202601"
+
+    own_connection = con is None or cur is None
+
+    if own_connection:
+        con = db()
+        cur = con.cursor()
 
     try:
-        prefix = datetime.now().strftime("MR-%Y%m%d")
+        # Serialize receipt-number generation for all app instances
+        # using the same PostgreSQL database. The lock is held until
+        # the current transaction commits/rolls back.
+        cur.execute("SELECT pg_advisory_xact_lock(202601)")
 
         cur.execute(
             """
-            SELECT COUNT(*) AS receipt_count
+            SELECT COALESCE(
+                MAX(
+                    CASE
+                        WHEN split_part(receipt_no, '-', 3) ~ '^[0-9]+$'
+                        THEN CAST(split_part(receipt_no, '-', 3) AS INTEGER)
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS max_no
             FROM money_receipts
-            WHERE LEFT(receipt_no, LENGTH(%s)) = %s
+            WHERE receipt_no LIKE %s
             """,
-            (prefix, prefix)
+            (prefix + "-%",)
         )
 
         row = cur.fetchone()
+        max_no = int(row.get("max_no", 0) or 0) if row else 0
+        next_no = max_no + 1
 
-        if row:
-            count = int(row.get("receipt_count", 0) or 0)
-        else:
-            count = 0
-
-        count += 1
-
-        return f"{prefix}-{count:04d}"
+        return f"{prefix}-{next_no:04d}"
 
     finally:
-        cur.close()
-        con.close()
+        if own_connection:
+            cur.close()
+            con.close()
 
 # =========================================================
 # MONEY RECEIPT
@@ -4287,7 +4307,12 @@ def money_receipt():
             ""
         ).strip()
 
-        receipt_no = generate_receipt_no()
+        # Generate the receipt number inside the SAME transaction used
+        # for the INSERT. This prevents duplicate receipt numbers.
+        receipt_no = generate_receipt_no(
+            con=con,
+            cur=cur
+        )
 
         created_at = datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
