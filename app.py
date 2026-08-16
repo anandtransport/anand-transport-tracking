@@ -2741,7 +2741,7 @@ FROM shipments
     # Total Amount
     # This includes amount regardless of Freight Basis:
     # Paid / TBB / To Pay
-    cur.execute(
+cur.execute(
     f"""
     SELECT COALESCE(
         SUM(
@@ -2764,7 +2764,7 @@ total_amount = cur.fetchone()["total_amount"] or 0
     # PAID / TBB / TO PAY BREAKUP
     # ============================================================
 
-    cur.execute(
+cur.execute(
         f"""
         SELECT
             COALESCE(
