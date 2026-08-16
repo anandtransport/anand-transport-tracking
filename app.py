@@ -2758,7 +2758,7 @@ cur.execute(
     date_params
 )
 
-    total_amount = cur.fetchone()["total_amount"] or 0
+total_amount = cur.fetchone()["total_amount"] or 0
 
     # =========================================================
     # PAID / TBB / TO PAY BREAKUP
