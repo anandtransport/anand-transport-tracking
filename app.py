@@ -2584,70 +2584,245 @@ def admin():
     con = db()
     cur = con.cursor()
 
-    cur.execute(
-        """
+    # =========================================================
+    # DATE-WISE REPORT FILTER
+    # =========================================================
+
+    from_date = request.args.get("from_date", "").strip()
+    to_date = request.args.get("to_date", "").strip()
+
+    # Default: show all shipments
+    shipments_query = """
         SELECT *
         FROM shipments
-        ORDER BY updated_at DESC
-        """
-    )
+    """
 
+    params = []
+
+    # If both dates are selected, filter by booking date
+    if from_date and to_date:
+        shipments_query += """
+            WHERE DATE(booking_date) BETWEEN %s AND %s
+        """
+        params = [from_date, to_date]
+
+    elif from_date:
+        shipments_query += """
+            WHERE DATE(booking_date) >= %s
+        """
+        params = [from_date]
+
+    elif to_date:
+        shipments_query += """
+            WHERE DATE(booking_date) <= %s
+        """
+        params = [to_date]
+
+    shipments_query += """
+        ORDER BY updated_at DESC
+    """
+
+    cur.execute(shipments_query, params)
     shipments = cur.fetchall()
 
+    # =========================================================
+    # SUMMARY COUNTS
+    # =========================================================
+
+    if from_date and to_date:
+        date_condition = """
+            WHERE DATE(booking_date) BETWEEN %s AND %s
+        """
+        date_params = [from_date, to_date]
+
+    elif from_date:
+        date_condition = """
+            WHERE DATE(booking_date) >= %s
+        """
+        date_params = [from_date]
+
+    elif to_date:
+        date_condition = """
+            WHERE DATE(booking_date) <= %s
+        """
+        date_params = [to_date]
+
+    else:
+        date_condition = ""
+        date_params = []
+
+    # Total consignments / dockets
     cur.execute(
-        "SELECT COUNT(*) AS c FROM shipments"
+        f"""
+        SELECT COUNT(*) AS c
+        FROM shipments
+        {date_condition}
+        """,
+        date_params
     )
 
     total = cur.fetchone()["c"]
 
+    # Booked
     cur.execute(
-        """
+        f"""
         SELECT COUNT(*) AS c
         FROM shipments
-        WHERE status='Booked'
-        """
+        {date_condition}
+        {"AND" if date_condition else "WHERE"} status='Booked'
+        """,
+        date_params
     )
 
     booked = cur.fetchone()["c"]
 
+    # In Transit
     cur.execute(
-        """
+        f"""
         SELECT COUNT(*) AS c
         FROM shipments
-        WHERE status='In Transit'
-        """
+        {date_condition}
+        {"AND" if date_condition else "WHERE"} status='In Transit'
+        """,
+        date_params
     )
 
     in_transit = cur.fetchone()["c"]
 
+    # Delivered
     cur.execute(
-        """
+        f"""
         SELECT COUNT(*) AS c
         FROM shipments
-        WHERE status='Delivered'
-        """
+        {date_condition}
+        {"AND" if date_condition else "WHERE"} status='Delivered'
+        """,
+        date_params
     )
 
     delivered = cur.fetchone()["c"]
+
+    # =========================================================
+    # REPORT TOTALS
+    # =========================================================
+
+    # Total Packages
+    cur.execute(
+        f"""
+        SELECT COALESCE(SUM(packages), 0) AS total_packages
+        FROM shipments
+        {date_condition}
+        """,
+        date_params
+    )
+
+    total_packages = cur.fetchone()["total_packages"] or 0
+
+    # Total Weight
+    cur.execute(
+        f"""
+        SELECT COALESCE(SUM(weight), 0) AS total_weight
+        FROM shipments
+        {date_condition}
+        """,
+        date_params
+    )
+
+    total_weight = cur.fetchone()["total_weight"] or 0
+
+    # Total Amount
+    # This includes amount regardless of Freight Basis:
+    # Paid / TBB / To Pay
+    cur.execute(
+        f"""
+        SELECT COALESCE(SUM(amount), 0) AS total_amount
+        FROM shipments
+        {date_condition}
+        """,
+        date_params
+    )
+
+    total_amount = cur.fetchone()["total_amount"] or 0
+
+    # =========================================================
+    # PAID / TBB / TO PAY BREAKUP
+    # =========================================================
+
+    cur.execute(
+        f"""
+        SELECT
+            COALESCE(SUM(
+                CASE
+                    WHEN freight_basis = 'Paid'
+                    THEN amount
+                    ELSE 0
+                END
+            ), 0) AS paid_amount,
+
+            COALESCE(SUM(
+                CASE
+                    WHEN freight_basis = 'TBB'
+                    THEN amount
+                    ELSE 0
+                END
+            ), 0) AS tbb_amount,
+
+            COALESCE(SUM(
+                CASE
+                    WHEN freight_basis = 'To Pay'
+                    THEN amount
+                    ELSE 0
+                END
+            ), 0) AS to_pay_amount
+
+        FROM shipments
+        {date_condition}
+        """,
+        date_params
+    )
+
+    amount_breakup = cur.fetchone()
+
+    paid_amount = amount_breakup["paid_amount"] or 0
+    tbb_amount = amount_breakup["tbb_amount"] or 0
+    to_pay_amount = amount_breakup["to_pay_amount"] or 0
 
     cur.close()
     con.close()
 
     return render_template_string(
         ADMIN_DASHBOARD_HTML,
+
         shipments=shipments,
+
+        # Main dashboard
         total=total,
         booked=booked,
         in_transit=in_transit,
         delivered=delivered,
+
+        # Date filter
+        from_date=from_date,
+        to_date=to_date,
+
+        # Report totals
+        total_packages=total_packages,
+        total_weight=total_weight,
+        total_amount=total_amount,
+
+        # Amount breakup
+        paid_amount=paid_amount,
+        tbb_amount=tbb_amount,
+        to_pay_amount=to_pay_amount,
+
         username=session.get(
             "admin_username",
             "Admin"
         ),
+
         transport_gst=TRANSPORT_GST,
         transport_helpline=TRANSPORT_HELPLINE
     )
-
 
 # =========================================================
 # NEW SHIPMENT
