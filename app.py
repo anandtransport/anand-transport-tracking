@@ -157,6 +157,8 @@ def init_db():
 
         "amount": "TEXT",
         "freight_basis": "TEXT",
+        "shipment_value": "TEXT",
+        "tbb_customer_code": "TEXT",
 
         "goods_description": "TEXT"
     }
@@ -1134,6 +1136,8 @@ def shipment_pdf(sid):
         shipment.get("freight_basis")
         or "To Pay"
     )
+    shipment_value = shipment.get("shipment_value") or "-"
+    tbb_customer_code = shipment.get("tbb_customer_code") or "-"
 
     # =====================================================
     # AMOUNT RULE
@@ -1230,6 +1234,30 @@ def shipment_pdf(sid):
 
                 _pdf_paragraph(
                     shipment.get("weight") or "-",
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "Shipment Value",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "₹ " + money_text(shipment_value)
+                    if shipment_value != "-"
+                    else "-",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "TBB Customer Code",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    tbb_customer_code if freight_basis == "TBB" else "-",
                     normal
                 )
             ],
@@ -1347,6 +1375,30 @@ def shipment_pdf(sid):
 
                 _pdf_paragraph(
                     shipment.get("weight") or "-",
+                    normal
+                )
+            ],
+
+            [
+                _pdf_paragraph(
+                    "Shipment Value",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "₹ " + money_text(shipment_value)
+                    if shipment_value != "-"
+                    else "-",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    "TBB Customer Code",
+                    normal
+                ),
+
+                _pdf_paragraph(
+                    tbb_customer_code if freight_basis == "TBB" else "-",
                     normal
                 )
             ],
@@ -1886,6 +1938,122 @@ def booking_report():
     )
 
 
+
+# =========================================================
+# TBB CUSTOMER REPORT
+# =========================================================
+
+TBB_CUSTOMER_HTML = r'''
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TBB Customer Report - Anand Transport</title>
+<style>
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;color:#172033}
+.wrap{max-width:1500px;margin:auto;padding:28px 4% 50px}
+.nav{background:#fff;border-bottom:3px solid #f0a900;min-height:70px;display:flex;align-items:center;justify-content:space-between;padding:12px 4%;gap:20px}
+.brand{display:flex;align-items:center;gap:12px}.logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#e51b00,#ffb000);display:grid;place-items:center;color:#fff;font-weight:900}
+.brand h1{font-size:21px;margin:0;color:#b00000}.brand small{color:#555}.nav a{color:#111;text-decoration:none;font-weight:800;font-size:13px}
+.wrap h2{margin-bottom:5px}.muted{color:#6b7280}
+.filter,.card,.stat{background:#fff;border:1px solid #e6e8ef;border-radius:14px;box-shadow:0 3px 12px #00000008}
+.filter{padding:18px;margin:20px 0}.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}.field{min-width:250px}
+.field label{display:block;font-size:12px;font-weight:800;color:#6b7280;margin-bottom:6px;text-transform:uppercase}
+.field input{width:100%;padding:10px 12px;border:1px solid #d8dce5;border-radius:8px;font-size:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:0;border-radius:9px;padding:11px 15px;font-weight:800;cursor:pointer;min-height:42px}
+.primary{background:#b40000;color:#fff}.secondary{background:#fff;color:#172033;border:1px solid #e6e8ef}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}.stat{padding:17px}
+.label{color:#6b7280;font-size:12px;font-weight:800;text-transform:uppercase}.num{font-size:25px;font-weight:900;margin-top:7px}
+.card{overflow:hidden}.head{padding:17px 20px;border-bottom:1px solid #e6e8ef;display:flex;justify-content:space-between}
+.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:1400px}.table th,.table td{padding:12px 10px;border-bottom:1px solid #e6e8ef;font-size:13px;text-align:left}
+.table th{background:#fafafa;color:#596174;font-size:11px;text-transform:uppercase;white-space:nowrap}.center{text-align:center!important}.amount{text-align:right!important;font-weight:800}
+.total td{background:#fff8e8;border-top:2px solid #f0a900;font-weight:900}
+@media(max-width:900px){.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.summary{grid-template-columns:1fr}.field{width:100%}}
+</style>
+</head>
+<body>
+<header class="nav">
+<div class="brand"><div class="logo">ATC</div><div><h1>Anand Transport Company</h1><small>Reliable • Fast • Nationwide</small></div></div>
+<a href="{{ url_for('admin') }}">← Admin Dashboard</a>
+</header>
+<main class="wrap">
+<h2>TBB Customer</h2>
+<p class="muted">Unique TBB Customer Code se sirf us customer ki saari TBB bookings dekhein.</p>
+<form class="filter" method="GET">
+<div class="row">
+<div class="field"><label>TBB Customer Code</label><input name="code" value="{{ code }}" placeholder="e.g. TBB001" autocomplete="off"></div>
+<button class="btn primary" type="submit">Search Customer</button>
+<a class="btn secondary" href="{{ url_for('tbb_customer_report') }}">Reset</a>
+</div>
+</form>
+{% if code %}
+<section class="summary">
+<div class="stat"><div class="label">TBB Docket</div><div class="num">{{ total_dockets }}</div></div>
+<div class="stat"><div class="label">Total PKG</div><div class="num">{{ total_packages }}</div></div>
+<div class="stat"><div class="label">Total Weight</div><div class="num">{{ total_weight_text }} KG</div></div>
+<div class="stat"><div class="label">TBB Amount</div><div class="num">₹ {{ total_amount_text }}</div></div>
+</section>
+<section class="card">
+<div class="head"><strong>TBB Booking Details</strong><span class="muted" style="font-size:12px">Code: {{ code }}</span></div>
+<div class="tablewrap"><table class="table">
+<thead><tr><th>SR. No.</th><th>Docket No.</th><th>Consignor</th><th>Consignee</th><th>Date</th><th>TBB Code</th><th>PKG</th><th>Weight</th><th>Delivery Location</th><th>Shipment Value</th><th>Amount</th></tr></thead>
+<tbody>
+{% for s in shipments %}
+<tr><td class="center">{{ loop.index }}</td><td><strong>{{ s.docket }}</strong></td><td>{{ s.consignor or '-' }}</td><td>{{ s.consignee or '-' }}</td><td>{{ s.booking_date }}</td><td><strong>{{ s.tbb_customer_code }}</strong></td><td class="center">{{ s.packages or 0 }}</td><td>{{ s.weight or '-' }}</td><td><strong>{{ s.destination or '-' }}</strong></td><td class="amount">₹ {{ money_text(s.shipment_value) }}</td><td class="amount">₹ {{ money_text(s.amount) }}</td></tr>
+{% else %}<tr><td colspan="11" style="text-align:center;padding:40px;color:#777">No TBB bookings found for this code.</td></tr>{% endfor %}
+{% if shipments %}<tr class="total"><td colspan="6">TOTAL</td><td class="center">{{ total_packages }}</td><td>{{ total_weight_text }} KG</td><td>{{ total_dockets }} Docket</td><td>-</td><td class="amount">₹ {{ total_amount_text }}</td></tr>{% endif %}
+</tbody></table></div>
+</section>
+{% endif %}
+</main>
+</body>
+</html>
+'''
+
+
+@app.route("/admin/tbb-customer")
+@login_required
+def tbb_customer_report():
+    code = request.args.get("code", "").strip().upper()
+    shipments = []
+    totals = {"total_dockets":0,"total_packages":0,"total_weight":0,"total_amount":0}
+
+    if code:
+        con = db()
+        cur = con.cursor()
+        cur.execute(
+            "SELECT id,docket,booking_date,source,destination,consignor,consignee,packages,weight,amount,freight_basis,shipment_value,tbb_customer_code "
+            "FROM shipments "
+            "WHERE freight_basis='TBB' AND UPPER(COALESCE(tbb_customer_code,''))=%s "
+            "ORDER BY DATE(booking_date) ASC,id ASC",
+            (code,)
+        )
+        shipments = cur.fetchall()
+        cur.execute(
+            "SELECT COUNT(*) AS total_dockets, "
+            "COALESCE(SUM(packages),0) AS total_packages, "
+            "COALESCE(SUM(COALESCE(NULLIF(regexp_replace(weight::text,'[^0-9.]','','g'),'')::NUMERIC,0)),0) AS total_weight, "
+            "COALESCE(SUM(COALESCE(NULLIF(regexp_replace(amount::text,'[^0-9.]','','g'),'')::NUMERIC,0)),0) AS total_amount "
+            "FROM shipments "
+            "WHERE freight_basis='TBB' AND UPPER(COALESCE(tbb_customer_code,''))=%s",
+            (code,)
+        )
+        totals = cur.fetchone()
+        cur.close()
+        con.close()
+
+    return render_template_string(
+        TBB_CUSTOMER_HTML,
+        code=code,
+        shipments=shipments,
+        total_dockets=totals["total_dockets"] or 0,
+        total_packages=totals["total_packages"] or 0,
+        total_weight_text=money_text(totals["total_weight"] or 0),
+        total_amount_text=money_text(totals["total_amount"] or 0),
+        money_text=money_text
+    )
+
 # =========================================================
 # ADMIN DASHBOARD
 # =========================================================
@@ -2378,6 +2546,13 @@ class="btn secondary"
 href="{{ url_for('booking_report') }}"
 >
 📊 Booking Report
+</a>
+
+<a
+class="btn secondary"
+href="{{ url_for('tbb_customer_report') }}"
+>
+👤 TBB Customer
 </a>
 
 <a
@@ -3200,11 +3375,27 @@ def new_shipment():
         "amount",
         ""
     ).strip()
+    shipment_value = data.get(
+        "shipment_value",
+        ""
+    ).strip()
+
+    tbb_customer_code = data.get(
+        "tbb_customer_code",
+        ""
+    ).strip().upper()
 
     freight_basis = data.get(
         "freight_basis",
         "To Pay"
     ).strip() or "To Pay"
+
+    if freight_basis == "TBB" and not tbb_customer_code:
+        flash("TBB Customer Code is required for TBB booking.")
+        return redirect(url_for("new_shipment"))
+
+    if freight_basis != "TBB":
+        tbb_customer_code = ""
 
     goods_description = data.get(
         "goods_description",
@@ -3281,12 +3472,14 @@ def new_shipment():
                 consignee_contact,
                 amount,
                 freight_basis,
+                shipment_value,
+                tbb_customer_code,
                 goods_description
             )
             VALUES(
                 %s,%s,%s,%s,%s,%s,%s,%s,%s,
                 %s,%s,%s,%s,%s,%s,%s,%s,%s,
-                %s,%s,%s
+                %s,%s,%s,%s,%s
             )
             RETURNING id
             """,
@@ -3890,6 +4083,16 @@ placeholder="e.g. 1250"
 
 </div>
 
+<div class="field">
+<label>
+Shipment Value (₹)
+</label>
+<input
+name="shipment_value"
+placeholder="e.g. 50000"
+>
+</div>
+
 
 </div>
 
@@ -3925,6 +4128,12 @@ TBB
 
 </select>
 
+</div>
+
+<div class="field" id="tbbCodeField" style="display:none">
+<label>TBB Customer Code</label>
+<input name="tbb_customer_code" id="tbbCustomerCode" placeholder="e.g. TBB001" autocomplete="off">
+<small style="display:block;margin-top:6px;color:#6b7280">Sirf TBB booking ke liye unique customer code.</small>
 </div>
 
 
@@ -4011,6 +4220,22 @@ type="submit"
 
 </form>
 
+<script>
+(function(){
+    const basis=document.querySelector('select[name="freight_basis"]');
+    const box=document.getElementById('tbbCodeField');
+    const code=document.getElementById('tbbCustomerCode');
+    function toggleTbbCode(){
+        if(!basis||!box||!code)return;
+        const isTbb=basis.value==='TBB';
+        box.style.display=isTbb?'':'none';
+        code.required=isTbb;
+        if(!isTbb) code.value='';
+    }
+    if(basis){basis.addEventListener('change',toggleTbbCode);toggleTbbCode();}
+})();
+</script>
+
 </main>
 
 </body>
@@ -4077,6 +4302,19 @@ def edit_shipment(sid):
 
     data = request.form
 
+    shipment_value = data.get("shipment_value", "").strip()
+    freight_basis = data.get("freight_basis", old.get("freight_basis") or "To Pay").strip() or "To Pay"
+    tbb_customer_code = data.get("tbb_customer_code", "").strip().upper()
+
+    if freight_basis == "TBB" and not tbb_customer_code:
+        flash("TBB Customer Code is required for TBB booking.")
+        cur.close()
+        con.close()
+        return redirect(url_for("edit_shipment", sid=sid))
+
+    if freight_basis != "TBB":
+        tbb_customer_code = ""
+
     now = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )
@@ -4142,6 +4380,10 @@ def edit_shipment(sid):
             location=%s,
             expected_delivery=%s,
             remark=%s,
+            amount=%s,
+            freight_basis=%s,
+            shipment_value=%s,
+            tbb_customer_code=%s,
             updated_at=%s
         WHERE id=%s
         """,
@@ -4158,6 +4400,10 @@ def edit_shipment(sid):
             location,
             data.get("expected_delivery", ""),
             remark,
+            data.get("amount", "").strip(),
+            freight_basis,
+            shipment_value,
+            tbb_customer_code,
             now,
             sid
         )
