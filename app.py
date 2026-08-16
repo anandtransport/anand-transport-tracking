@@ -3504,6 +3504,8 @@ def new_shipment():
                 consignee_contact,
                 amount,
                 freight_basis,
+                shipment_value,
+                tbb_customer_code,
                 goods_description
             )
         )
