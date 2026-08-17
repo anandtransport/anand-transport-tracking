@@ -174,6 +174,49 @@ def init_db():
         )
 
     # -------------------------
+    # UPDATED BOOKING / CHARGE COLUMNS
+    # -------------------------
+    booking_columns = {
+        "consignor_gstin": "TEXT",
+        "consignee_gstin": "TEXT",
+        "invoice_ref": "TEXT",
+        "actual_weight": "TEXT",
+        "charge_weight": "TEXT",
+        "freight_charge": "TEXT DEFAULT '0'",
+        "handling_charge": "TEXT DEFAULT '0'",
+        "dd_charge": "TEXT DEFAULT '0'",
+        "other_charge": "TEXT DEFAULT '0'",
+        "charge_total": "TEXT DEFAULT '0'",
+        "gst_amount": "TEXT DEFAULT '0'",
+        "grand_total": "TEXT DEFAULT '0'",
+        "charges_approved": "BOOLEAN DEFAULT FALSE"
+    }
+    for column, sql_type in booking_columns.items():
+        cur.execute(f"ALTER TABLE shipments ADD COLUMN IF NOT EXISTS {column} {sql_type}")
+
+    # -------------------------
+    # TBB CUSTOMERS
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS tbb_customers(
+            id SERIAL PRIMARY KEY,
+            code TEXT UNIQUE NOT NULL,
+            customer_name TEXT NOT NULL,
+            mobile TEXT,
+            gstin TEXT,
+            address TEXT,
+            aadhaar_no TEXT,
+            pan_no TEXT,
+            aadhaar_filename TEXT,
+            aadhaar_data BYTEA,
+            pan_filename TEXT,
+            pan_data BYTEA,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+    """)
+
+    # -------------------------
     # TRACKING EVENTS
     # -------------------------
 
@@ -250,111 +293,7 @@ def init_db():
             )
         )
 
-    # =====================================================
-    # DEMO SHIPMENT
-    # =====================================================
-
-    cur.execute(
-        "SELECT 1 FROM shipments LIMIT 1"
-    )
-
-    if not cur.fetchone():
-
-        now = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-        cur.execute(
-            """
-            INSERT INTO shipments
-            (
-                docket,
-                booking_date,
-                source,
-                destination,
-                consignor,
-                consignee,
-                packages,
-                weight,
-                status,
-                location,
-                expected_delivery,
-                remark,
-                created_at,
-                updated_at
-            )
-            VALUES(
-                %s,%s,%s,%s,%s,%s,%s,%s,%s,
-                %s,%s,%s,%s,%s
-            )
-            RETURNING id
-            """,
-            (
-                "AT100001",
-                "2026-08-10",
-                "Jaisalmer",
-                "Jaipur",
-                "ABC Industries",
-                "XYZ Traders",
-                2,
-                "35 kg",
-                "In Transit",
-                "Jodhpur",
-                "2026-08-16",
-                "Shipment reached Jodhpur hub.",
-                now,
-                now
-            )
-        )
-
-        sid = cur.fetchone()["id"]
-
-        demo_events = [
-
-            (
-                "Booked",
-                "Jaisalmer",
-                "Shipment booked.",
-                "2026-08-10 10:20:00"
-            ),
-
-            (
-                "Picked Up",
-                "Jaisalmer",
-                "Shipment picked up.",
-                "2026-08-10 14:30:00"
-            ),
-
-            (
-                "In Transit",
-                "Jodhpur",
-                "Shipment reached Jodhpur hub.",
-                "2026-08-13 08:45:00"
-            )
-        ]
-
-        for event in demo_events:
-
-            cur.execute(
-                """
-                INSERT INTO tracking_events
-                (
-                    shipment_id,
-                    status,
-                    location,
-                    remark,
-                    event_time
-                )
-                VALUES(%s,%s,%s,%s,%s)
-                """,
-                (
-                    sid,
-                    event[0],
-                    event[1],
-                    event[2],
-                    event[3]
-                )
-            )
+    # Demo shipment intentionally not created.
 
     con.commit()
 
@@ -2012,6 +1951,86 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;color:#1
 '''
 
 
+
+# =========================================================
+# TBB CUSTOMER MANAGEMENT
+# =========================================================
+TBB_PAGE_HTML = r"""
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TBB Customer - Anand Transport</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f6f7fb;font-family:Arial;color:#172033}.top{background:#fff;border-bottom:3px solid #f0a900;padding:14px 4%;display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}.top a{font-weight:800;text-decoration:none;color:#222}.wrap{max-width:1500px;margin:auto;padding:25px 4%}.brand{font-weight:900;color:#b00000}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 3px 12px #00000008}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:6px}.field input{width:100%;padding:11px;border:1px solid #d5d9e1;border-radius:8px}.full{grid-column:1/-1}.btn{border:0;border-radius:9px;padding:11px 16px;background:#b40000;color:#fff;font-weight:900;cursor:pointer;text-decoration:none;display:inline-block}.btn2{background:#fff;color:#222;border:1px solid #ddd}.search{display:flex;gap:10px;flex-wrap:wrap}.search input{flex:1;min-width:220px;padding:11px;border:1px solid #d5d9e1;border-radius:8px}table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:13px;white-space:nowrap}th{background:#fafafa;font-size:11px;text-transform:uppercase;color:#687083}.table{overflow:auto}.detail{background:#fffaf0;border:1px solid #eadfca;border-radius:12px;padding:15px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{padding:14px;border:1px solid #eee;border-radius:10px;background:#fff}.stat b{font-size:25px}@media(max-width:750px){.grid,.stats{grid-template-columns:1fr}}
+</style></head><body><header class="top"><div><div class="brand">ATC • Anand Transport Company</div><small>TBB Customer Management</small></div><div><a href="{{ url_for('admin') }}">← Dashboard</a></div></header><main class="wrap"><div class="card"><h2>Add TBB Customer</h2><form method="post" action="{{ url_for('tbb_customer_add') }}" enctype="multipart/form-data"><div class="grid"><div class="field"><label>Customer Name</label><input name="customer_name" required></div><div class="field"><label>Mobile No.</label><input name="mobile"></div><div class="field"><label>GSTIN No.</label><input name="gstin"></div><div class="field"><label>Address</label><input name="address"></div><div class="field"><label>Aadhaar No.</label><input name="aadhaar_no"></div><div class="field"><label>PAN No.</label><input name="pan_no"></div><div class="field"><label>Upload Aadhaar</label><input type="file" name="aadhaar_file" accept="image/*,.pdf"></div><div class="field"><label>Upload PAN</label><input type="file" name="pan_file" accept="image/*,.pdf"></div></div><p><button class="btn" type="submit">Generate Code & Save Customer</button></p></form></div>
+<div class="card"><h2>Search Customer</h2><form class="search" method="get"><input name="q" value="{{ q }}" placeholder="Customer name or TBB code"><button class="btn" type="submit">Search</button><a class="btn btn2" href="{{ url_for('tbb_customers') }}">Clear</a><a class="btn" href="{{ url_for('tbb_report_pdf') }}?q={{ q|urlencode }}">Generate Report</a></form></div>
+{% if selected %}<div class="card"><h2>{{ selected.customer_name }} <small>({{ selected.code }})</small></h2><div class="detail"><div><b>Mobile:</b> {{ selected.mobile or '-' }} &nbsp; <b>GSTIN:</b> {{ selected.gstin or '-' }}</div><div><b>Address:</b> {{ selected.address or '-' }}</div><div><b>Aadhaar:</b> {{ selected.aadhaar_no or '-' }} {% if selected.aadhaar_filename %}<a href="{{ url_for('tbb_doc',cid=selected.id,kind='aadhaar') }}">View</a>{% endif %} &nbsp; <b>PAN:</b> {{ selected.pan_no or '-' }} {% if selected.pan_filename %}<a href="{{ url_for('tbb_doc',cid=selected.id,kind='pan') }}">View</a>{% endif %}</div></div><div class="stats" style="margin-top:14px"><div class="stat"><small>Booked</small><br><b>{{ stats.booked }}</b></div><div class="stat"><small>Charges Added / Approved</small><br><b>{{ stats.approved }}</b></div><div class="stat"><small>Pending Charges</small><br><b>{{ stats.pending }}</b></div></div></div><div class="card"><h3>Customer Bookings</h3><div class="table"><table><thead><tr><th>Sr.</th><th>GR No.</th><th>Booking Date</th><th>Consignee</th><th>Delivery Location</th><th>Charge Weight</th><th>Actual Weight</th><th>Packages</th><th>Status</th><th>GR</th><th>Charges</th></tr></thead><tbody>{% for s in bookings %}<tr><td>{{ loop.index }}</td><td>{{ s.docket }}</td><td>{{ s.booking_date }}</td><td>{{ s.consignee or '-' }}</td><td>{{ s.destination }}</td><td>{{ s.charge_weight or s.weight or '-' }}</td><td>{{ s.actual_weight or '-' }}</td><td>{{ s.packages or 0 }}</td><td>{{ s.status }}</td><td><a href="{{ url_for('shipment_pdf',sid=s.id) }}" target="_blank">Download GR</a></td><td>{% if s.freight_basis == 'TBB' and not s.charges_approved %}<a href="{{ url_for('tbb_add_charges',sid=s.id) }}">Add Charges</a>{% else %}Approved{% endif %}</td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+</main></body></html>
+"""
+
+@app.route('/admin/tbb-customers')
+@login_required
+def tbb_customers():
+    q=request.args.get('q','').strip(); selected=None; bookings=[]; stats={'booked':0,'approved':0,'pending':0}
+    con=db(); cur=con.cursor()
+    if q:
+        cur.execute("SELECT * FROM tbb_customers WHERE UPPER(code)=UPPER(%s) OR customer_name ILIKE %s ORDER BY id DESC LIMIT 1",(q,'%'+q+'%'))
+        selected=cur.fetchone()
+        if selected:
+            cur.execute("SELECT * FROM shipments WHERE UPPER(COALESCE(tbb_customer_code,''))=UPPER(%s) ORDER BY DATE(booking_date) ASC,id ASC",(selected['code'],)); bookings=cur.fetchall()
+            stats['booked']=len(bookings); stats['approved']=sum(1 for x in bookings if x.get('charges_approved')); stats['pending']=stats['booked']-stats['approved']
+    cur.close(); con.close()
+    return render_template_string(TBB_PAGE_HTML,q=q,selected=selected,bookings=bookings,stats=stats)
+
+@app.route('/admin/tbb-customer/add',methods=['POST'])
+@login_required
+def tbb_customer_add():
+    data=request.form; name=data.get('customer_name','').strip()
+    if not name: flash('Customer name is required.'); return redirect(url_for('tbb_customers'))
+    con=db(); cur=con.cursor(); now=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute("SELECT COALESCE(MAX(id),0)+1 AS n FROM tbb_customers"); n=cur.fetchone()['n']; code=f'TBB{int(n):04d}'
+    af=request.files.get('aadhaar_file'); pf=request.files.get('pan_file')
+    cur.execute("INSERT INTO tbb_customers(code,customer_name,mobile,gstin,address,aadhaar_no,pan_no,aadhaar_filename,aadhaar_data,pan_filename,pan_data,created_at,updated_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", (code,name,data.get('mobile','').strip(),data.get('gstin','').strip(),data.get('address','').strip(),data.get('aadhaar_no','').strip(),data.get('pan_no','').strip(),af.filename if af and af.filename else None,psycopg2.Binary(af.read()) if af and af.filename else None,pf.filename if pf and pf.filename else None,psycopg2.Binary(pf.read()) if pf and pf.filename else None,now,now)); con.commit(); cur.close(); con.close(); flash(f'TBB Customer created: {code}'); return redirect(url_for('tbb_customers')+'?q='+code)
+
+@app.route('/admin/api/tbb-customer/<code>')
+@login_required
+def tbb_customer_api(code):
+    con=db(); cur=con.cursor(); cur.execute("SELECT code,customer_name,mobile,gstin,address FROM tbb_customers WHERE UPPER(code)=UPPER(%s)",(code,)); c=cur.fetchone(); cur.close(); con.close(); return jsonify({'ok':bool(c),'customer':dict(c) if c else None})
+
+@app.route('/api/tbb-customer/<code>')
+def public_tbb_customer_api(code):
+    con=db(); cur=con.cursor()
+    cur.execute("SELECT code,customer_name,mobile,gstin,address FROM tbb_customers WHERE UPPER(code)=UPPER(%s)", (code,))
+    c=cur.fetchone(); cur.close(); con.close()
+    return jsonify({'found': bool(c), 'customer': dict(c) if c else None})
+
+
+@app.route('/admin/tbb-document/<int:cid>/<kind>')
+@login_required
+def tbb_doc(cid,kind):
+    col='aadhaar_data' if kind=='aadhaar' else 'pan_data'; namecol='aadhaar_filename' if kind=='aadhaar' else 'pan_filename'
+    con=db(); cur=con.cursor(); cur.execute(f"SELECT {col},{namecol} FROM tbb_customers WHERE id=%s",(cid,)); r=cur.fetchone(); cur.close(); con.close()
+    if not r or not r[col]: return 'Document not found',404
+    return send_file(BytesIO(bytes(r[col])),download_name=r[namecol] or f'{kind}.bin',as_attachment=False)
+
+@app.route('/admin/tbb/<int:sid>/charges',methods=['GET','POST'])
+@login_required
+def tbb_add_charges(sid):
+    con=db(); cur=con.cursor(); cur.execute("SELECT * FROM shipments WHERE id=%s",(sid,)); s=cur.fetchone()
+    if not s: cur.close(); con.close(); return 'Not found',404
+    if request.method=='POST':
+        d=request.form; f=money_value(d.get('freight_charge')); h=money_value(d.get('handling_charge')); dd=money_value(d.get('dd_charge')); o=money_value(d.get('other_charge')); total=f+h+dd+o; gst=total*0.18; grand=total+gst
+        cur.execute("UPDATE shipments SET freight_charge=%s,handling_charge=%s,dd_charge=%s,other_charge=%s,charge_total=%s,gst_amount=%s,grand_total=%s,amount=%s,charges_approved=TRUE,updated_at=%s WHERE id=%s",(f,h,dd,o,total,gst,grand,grand,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),sid)); con.commit(); cur.close(); con.close(); flash('TBB charges added/approved successfully.'); return redirect(url_for('tbb_customers')+'?q='+str(s.get('tbb_customer_code') or ''))
+    cur.close(); con.close()
+    return render_template_string("""<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Add TBB Charges</title><style>body{font-family:Arial;background:#f6f7fb;padding:30px}.box{max-width:650px;margin:auto;background:#fff;padding:25px;border-radius:14px}label{display:block;font-weight:bold;margin-top:12px}input{width:100%;padding:11px;box-sizing:border-box;margin-top:5px;border:1px solid #ddd;border-radius:8px}button{margin-top:18px;padding:12px 18px;background:#b40000;color:#fff;border:0;border-radius:8px;font-weight:bold}</style></head><body><div class="box"><h2>Add Charges - {{ s.docket }}</h2><p>{{ s.consignor }} / {{ s.tbb_customer_code }}</p><form method="post">{% for n in ['freight_charge','handling_charge','dd_charge','other_charge'] %}<label>{{ n.replace('_',' ').title() }} (₹)</label><input name="{{n}}" value="{{ s[n] or 0 }}">{% endfor %}<button>Save & Approve Charges</button></form></div>,</body></html>""",s=s)
+
+@app.route('/admin/tbb-report.pdf')
+@login_required
+def tbb_report_pdf():
+    q=request.args.get('q','').strip(); con=db(); cur=con.cursor(); cur.execute("SELECT * FROM tbb_customers WHERE UPPER(code)=UPPER(%s) OR customer_name ILIKE %s ORDER BY id DESC LIMIT 1",(q,'%'+q+'%')); c=cur.fetchone()
+    if not c: cur.close(); con.close(); return 'Customer not found',404
+    cur.execute("SELECT * FROM shipments WHERE UPPER(COALESCE(tbb_customer_code,''))=UPPER(%s) AND charges_approved=TRUE ORDER BY DATE(booking_date) ASC,id ASC",(c['code'],)); rows=cur.fetchall(); cur.close(); con.close()
+    buf=BytesIO(); doc=SimpleDocTemplate(buf,pagesize=A4,rightMargin=25,leftMargin=25,topMargin=30,bottomMargin=30); styles=getSampleStyleSheet(); story=[Paragraph(TRANSPORT_NAME,styles['Title']),Paragraph(TRANSPORT_ADDRESS,styles['Normal']),Paragraph('GSTIN: '+TRANSPORT_GST+' | '+TRANSPORT_HELPLINE,styles['Normal']),Spacer(1,12),Paragraph(f"TBB Customer Report — {c['customer_name']} ({c['code']})",styles['Heading2'])]
+    data=[['Sr.','GR No.','Booking Date','Consignee','Destination','Packages','Charge Wt.','Actual Wt.','Status','Net Amount']]; net=0
+    for i,r in enumerate(rows,1): net+=money_value(r.get('grand_total') or r.get('amount')); data.append([str(i),r['docket'],format_date_ddmmyyyy(r['booking_date']),r.get('consignee') or '-',r.get('destination') or '-',str(r.get('packages') or 0),r.get('charge_weight') or '-',r.get('actual_weight') or '-',r.get('status') or '-',money_text(r.get('grand_total') or r.get('amount'))])
+    data.append(['','','','','','','','','NET AMOUNT',money_text(net)]); t=Table(data,repeatRows=1); t.setStyle(TableStyle([('GRID',(0,0),(-1,-1),.4,colors.grey),('BACKGROUND',(0,0),(-1,0),colors.HexColor('#fff3d6')),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('ALIGN',(-1,1),(-1,-1),'RIGHT'),('FONTSIZE',(0,0),(-1,-1),7)])); story += [t]; doc.build(story); buf.seek(0); return send_file(buf,download_name=f'TBB_Report_{c["code"]}.pdf',as_attachment=True,mimetype='application/pdf')
+
 @app.route("/admin/tbb-customer")
 @login_required
 def tbb_customer_report():
@@ -2996,293 +3015,32 @@ r.innerText
 # ADMIN
 # =========================================================
 
+ADMIN_PAGE_HTML = r"""
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Panel - Anand Transport</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f6f7fb;color:#172033}.top{background:#fff;border-bottom:3px solid #f0a900;padding:14px 4%;display:flex;justify-content:space-between;align-items:center;gap:15px}.brand{display:flex;align-items:center;gap:12px}.logo{width:50px;height:50px;border-radius:12px;background:linear-gradient(135deg,#d40000,#ffb000);display:grid;place-items:center;color:#fff;font-weight:900}.brand h1{margin:0;color:#b00000;font-size:20px}.brand small{color:#666}.nav{display:flex;gap:8px;flex-wrap:wrap}.nav a{padding:10px 13px;border-radius:8px;text-decoration:none;color:#222;font-weight:800;font-size:13px}.nav a:hover{background:#fff3d6}.wrap{max-width:1500px;margin:auto;padding:25px 4% 50px}.head{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}.head h2{margin:0}.btn{display:inline-block;padding:11px 16px;border-radius:9px;text-decoration:none;font-weight:900;background:#b40000;color:#fff}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}.stat{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 3px 12px #00000008}.stat b{font-size:28px}.label{color:#697386;font-size:13px;font-weight:700;margin-bottom:7px}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 3px 12px #00000008;margin-bottom:18px}.actions{display:flex;gap:10px;flex-wrap:wrap}.action{flex:1;min-width:190px;border:1px solid #eadfca;background:#fffaf0;border-radius:12px;padding:15px;text-decoration:none;color:#222}.action strong{display:block;color:#9a0000;margin-bottom:5px}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1000px}th,td{padding:11px 9px;border-bottom:1px solid #eee;text-align:left;font-size:13px;white-space:nowrap}th{background:#fafafa;font-size:11px;text-transform:uppercase;color:#687083}.filters{display:flex;gap:10px;flex-wrap:wrap}.filters input{padding:10px;border:1px solid #d5d9e1;border-radius:8px}.muted{color:#6b7280}@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.cards{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+</style></head><body>
+<header class="top"><div class="brand"><div class="logo">ATC</div><div><h1>Anand Transport Company</h1><small>Admin Panel • {{ username }}</small></div></div><nav class="nav"><a href="{{ url_for('admin') }}">Dashboard</a><a href="{{ url_for('booking_report') }}">Booking Report</a><a href="{{ url_for('new_shipment') }}">New Booking</a><a href="{{ url_for('tbb_customers') }}">TBB Customer</a><a href="{{ url_for('change_credentials') }}">Change Login</a><a href="{{ url_for('logout') }}">Logout</a></nav></header>
+<main class="wrap"><div class="head"><div><h2>Admin Dashboard</h2><p class="muted">Booking summary and shipment management</p></div><a class="btn" href="{{ url_for('new_shipment') }}">+ New Booking</a></div>
+<div class="cards"><div class="stat"><div class="label">Total Dockets</div><b>{{ total }}</b></div><div class="stat"><div class="label">Booked</div><b>{{ booked }}</b></div><div class="stat"><div class="label">In Transit</div><b>{{ in_transit }}</b></div><div class="stat"><div class="label">Delivered</div><b>{{ delivered }}</b></div></div>
+<div class="panel"><div class="actions"><a class="action" href="{{ url_for('booking_report') }}"><strong>Booking Report</strong><span>Open detailed booking report separately.</span></a><a class="action" href="{{ url_for('tbb_customers') }}"><strong>TBB Customer</strong><span>Add, search, manage and generate customer reports.</span></a><a class="action" href="{{ url_for('new_shipment') }}"><strong>New Booking</strong><span>Create a new shipment with automatic totals.</span></a></div></div>
+<div class="panel"><h3>Shipment Management</h3><div class="filters"><input id="search" placeholder="Search GR / consignor / consignee / status..."></div><div class="tablewrap"><table><thead><tr><th>Sr.</th><th>GR No.</th><th>Booking Date</th><th>Consignor</th><th>Consignee</th><th>Route</th><th>Charge Weight</th><th>Packages</th><th>Status</th><th>Action</th></tr></thead><tbody>{% for s in shipments %}<tr><td>{{ loop.index }}</td><td><b>{{ s.docket }}</b></td><td>{{ s.booking_date }}</td><td>{{ s.consignor or '-' }}</td><td>{{ s.consignee or '-' }}</td><td>{{ s.source }} → {{ s.destination }}</td><td>{{ s.charge_weight or s.weight or '-' }}</td><td>{{ s.packages or 0 }}</td><td>{{ s.status }}</td><td><a href="{{ url_for('edit_shipment',sid=s.id) }}">Edit</a> · <a href="{{ url_for('shipment_pdf',sid=s.id) }}" target="_blank">GR PDF</a></td></tr>{% endfor %}</tbody></table></div></div></main>
+<script>document.getElementById('search').addEventListener('input',e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('tbody tr').forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?'':'none')})</script></body></html>
+"""
+
 @app.route("/admin")
 @login_required
 def admin():
-
-    con = db()
-    cur = con.cursor()
-
-    # =========================================================
-    # DATE-WISE REPORT FILTER
-    # =========================================================
-
-    from_date = request.args.get("from_date", "").strip()
-    to_date = request.args.get("to_date", "").strip()
-
-    # Default: show all shipments
-    shipments_query = """
-        SELECT *
-        FROM shipments
-    """
-
-    params = []
-
-    # If both dates are selected, filter by booking date
-    if from_date and to_date:
-        shipments_query += """
-            WHERE DATE(booking_date) BETWEEN %s AND %s
-        """
-        params = [from_date, to_date]
-
-    elif from_date:
-        shipments_query += """
-            WHERE DATE(booking_date) >= %s
-        """
-        params = [from_date]
-
-    elif to_date:
-        shipments_query += """
-            WHERE DATE(booking_date) <= %s
-        """
-        params = [to_date]
-
-    shipments_query += """
-        ORDER BY updated_at DESC
-    """
-
-    cur.execute(shipments_query, params)
-    shipments = cur.fetchall()
-
-    # =========================================================
-    # SUMMARY COUNTS
-    # =========================================================
-
-    if from_date and to_date:
-        date_condition = """
-            WHERE DATE(booking_date) BETWEEN %s AND %s
-        """
-        date_params = [from_date, to_date]
-
-    elif from_date:
-        date_condition = """
-            WHERE DATE(booking_date) >= %s
-        """
-        date_params = [from_date]
-
-    elif to_date:
-        date_condition = """
-            WHERE DATE(booking_date) <= %s
-        """
-        date_params = [to_date]
-
-    else:
-        date_condition = ""
-        date_params = []
-
-    # Total consignments / dockets
-    cur.execute(
-        f"""
-        SELECT COUNT(*) AS c
-        FROM shipments
-        {date_condition}
-        """,
-        date_params
-    )
-
-    total = cur.fetchone()["c"]
-
-    # Booked
-    cur.execute(
-        f"""
-        SELECT COUNT(*) AS c
-        FROM shipments
-        {date_condition}
-        {"AND" if date_condition else "WHERE"} status='Booked'
-        """,
-        date_params
-    )
-
-    booked = cur.fetchone()["c"]
-
-    # In Transit
-    cur.execute(
-        f"""
-        SELECT COUNT(*) AS c
-        FROM shipments
-        {date_condition}
-        {"AND" if date_condition else "WHERE"} status='In Transit'
-        """,
-        date_params
-    )
-
-    in_transit = cur.fetchone()["c"]
-
-    # Delivered
-    cur.execute(
-        f"""
-        SELECT COUNT(*) AS c
-        FROM shipments
-        {date_condition}
-        {"AND" if date_condition else "WHERE"} status='Delivered'
-        """,
-        date_params
-    )
-
-    delivered = cur.fetchone()["c"]
-
-    # =========================================================
-    # REPORT TOTALS
-    # =========================================================
-
-    # Total Packages
-    cur.execute(
-        f"""
-        SELECT COALESCE(SUM(packages), 0) AS total_packages
-        FROM shipments
-        {date_condition}
-        """,
-        date_params
-    )
-
-    total_packages = cur.fetchone()["total_packages"] or 0
-
-    # Total Weight
-    cur.execute(
-        f"""
-        SELECT COALESCE(
-    SUM(
-        COALESCE(
-            NULLIF(
-                regexp_replace(weight::text, '[^0-9.]', '', 'g'),
-                ''
-            )::NUMERIC,
-            0
-        )
-    ),
-    0
-) AS total_weight
-FROM shipments
-{date_condition}
-        """,
-        date_params
-    )
-
-    total_weight = cur.fetchone()["total_weight"] or 0
-
-    # Total Amount
-    # This includes amount regardless of Freight Basis:
-    # Paid / TBB / To Pay
-    cur.execute(
-        f"""
-        SELECT COALESCE(
-            SUM(
-                CASE
-                    WHEN TRIM(amount::text) = '' THEN 0
-                    ELSE CAST(amount AS NUMERIC)
-                END
-            ),
-            0
-        ) AS total_amount
-        FROM shipments
-        {date_condition}
-        """,
-        date_params
-    )
-
-    total_amount = cur.fetchone()["total_amount"] or 0
-
-    # ============================================================
-    # PAID / TBB / TO PAY BREAKUP
-    # ============================================================
-
-    cur.execute(
-        f"""
-        SELECT
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN freight_basis = 'Paid'
-                        THEN
-                            CASE
-                                WHEN TRIM(amount::text) = '' THEN 0
-                                ELSE CAST(amount AS NUMERIC)
-                            END
-                        ELSE 0
-                    END
-                ), 0
-            ) AS paid_amount,
-
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN freight_basis = 'TBB'
-                        THEN
-                            CASE
-                                WHEN TRIM(amount::text) = '' THEN 0
-                                ELSE CAST(amount AS NUMERIC)
-                            END
-                        ELSE 0
-                    END
-                ), 0
-            ) AS tbb_amount,
-
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN freight_basis = 'To Pay'
-                        THEN
-                            CASE
-                                WHEN TRIM(amount::text) = '' THEN 0
-                                ELSE CAST(amount AS NUMERIC)
-                            END
-                        ELSE 0
-                    END
-                ), 0
-            ) AS to_pay_amount
-
-        FROM shipments
-        {date_condition}
-        """,
-        date_params
-    )
-
-    amount_breakup = cur.fetchone()
-
-    paid_amount = amount_breakup["paid_amount"] or 0
-    tbb_amount = amount_breakup["tbb_amount"] or 0
-    to_pay_amount = amount_breakup["to_pay_amount"] or 0
-    tbb_amount = amount_breakup["tbb_amount"] or 0
-    to_pay_amount = amount_breakup["to_pay_amount"] or 0
-
-    cur.close()
-    con.close()
-
-    return render_template_string(
-        ADMIN_DASHBOARD_HTML,
-
-        shipments=shipments,
-
-        # Main dashboard
-        total=total,
-        booked=booked,
-        in_transit=in_transit,
-        delivered=delivered,
-
-        # Date filter
-        from_date=from_date,
-        to_date=to_date,
-
-        # Report totals
-        total_packages=total_packages,
-        total_weight=total_weight,
-        total_amount=total_amount,
-        total_weight_text=money_text(total_weight),
-        total_amount_text=money_text(total_amount),
-
-        # Amount breakup
-        paid_amount=paid_amount,
-        tbb_amount=tbb_amount,
-        to_pay_amount=to_pay_amount,
-
-        username=session.get(
-            "admin_username",
-            "Admin"
-        ),
-
-        transport_gst=TRANSPORT_GST,
-        transport_helpline=TRANSPORT_HELPLINE
-    )
+    con=db(); cur=con.cursor()
+    cur.execute("SELECT * FROM shipments ORDER BY DATE(booking_date) DESC,id DESC")
+    shipments=cur.fetchall()
+    cur.execute("SELECT COUNT(*) AS c FROM shipments"); total=cur.fetchone()["c"]
+    cur.execute("SELECT COUNT(*) AS c FROM shipments WHERE status='Booked'"); booked=cur.fetchone()["c"]
+    cur.execute("SELECT COUNT(*) AS c FROM shipments WHERE status='In Transit'"); in_transit=cur.fetchone()["c"]
+    cur.execute("SELECT COUNT(*) AS c FROM shipments WHERE status='Delivered'"); delivered=cur.fetchone()["c"]
+    cur.close(); con.close()
+    return render_template_string(ADMIN_PAGE_HTML, shipments=shipments,total=total,booked=booked,in_transit=in_transit,delivered=delivered,username=session.get('admin_username','Admin'))
 
 # =========================================================
 # NEW SHIPMENT
@@ -3371,10 +3129,19 @@ def new_shipment():
         ""
     ).strip()
 
-    amount = data.get(
-        "amount",
-        ""
-    ).strip()
+    consignor_gstin = data.get("consignor_gstin", "").strip()
+    consignee_gstin = data.get("consignee_gstin", "").strip()
+    invoice_ref = data.get("invoice_ref", "").strip()
+    actual_weight = data.get("actual_weight", "").strip()
+    charge_weight = data.get("charge_weight", "").strip()
+    freight_charge = data.get("freight_charge", "0").strip() or "0"
+    handling_charge = data.get("handling_charge", "0").strip() or "0"
+    dd_charge = data.get("dd_charge", "0").strip() or "0"
+    other_charge = data.get("other_charge", "0").strip() or "0"
+    charge_total = data.get("charge_total", "0").strip() or "0"
+    gst_amount = data.get("gst_amount", "0").strip() or "0"
+    grand_total = data.get("grand_total", "0").strip() or "0"
+    amount = grand_total
     shipment_value = data.get(
         "shipment_value",
         ""
@@ -3448,6 +3215,22 @@ def new_shipment():
 
     try:
 
+        if freight_basis == "TBB":
+            cur.execute("SELECT customer_name,mobile,gstin,address FROM tbb_customers WHERE UPPER(code)=UPPER(%s)", (tbb_customer_code,))
+            tbb_customer = cur.fetchone()
+            if not tbb_customer:
+                con.rollback()
+                flash("TBB Customer Code not found. Please create/search the customer first.")
+                return redirect(url_for("new_shipment"))
+            # Always use the saved TBB customer details on the server.
+            consignor = tbb_customer["customer_name"] or consignor
+            consignor_contact = tbb_customer["mobile"] or consignor_contact
+            consignor_gstin = tbb_customer["gstin"] or consignor_gstin
+            consignor_address = tbb_customer["address"] or consignor_address
+
+        # Keep legacy weight field populated so existing reports continue to work.
+        weight = actual_weight or charge_weight or weight
+
         cur.execute(
             """
             INSERT INTO shipments
@@ -3474,12 +3257,14 @@ def new_shipment():
                 freight_basis,
                 shipment_value,
                 tbb_customer_code,
-                goods_description
+                goods_description,
+                consignor_gstin,consignee_gstin,invoice_ref,actual_weight,charge_weight,
+                freight_charge,handling_charge,dd_charge,other_charge,charge_total,gst_amount,grand_total,charges_approved
             )
             VALUES(
                 %s,%s,%s,%s,%s,%s,%s,%s,%s,
                 %s,%s,%s,%s,%s,%s,%s,%s,%s,
-                %s,%s,%s,%s,%s
+                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
             )
             RETURNING id
             """,
@@ -3506,7 +3291,10 @@ def new_shipment():
                 freight_basis,
                 shipment_value,
                 tbb_customer_code,
-                goods_description
+                goods_description,
+                consignor_gstin,consignee_gstin,invoice_ref,actual_weight,charge_weight,
+                freight_charge,handling_charge,dd_charge,other_charge,charge_total,gst_amount,grand_total,
+                True if (freight_basis != "TBB" or money_value(grand_total) > 0) else False
             )
         )
 
@@ -3855,16 +3643,21 @@ required
 
 
 <div class="field">
+<label>Expected Delivery Date</label>
+<input type="date" name="expected_delivery">
+</div>
 
-<label>
-Expected Delivery Date
-</label>
+<div class="field">
+<label>Freight Basis</label>
+<select name="freight_basis" id="freightBasis" required>
+<option value="To Pay">To Pay</option><option value="Paid">Paid</option><option value="TBB">TBB</option>
+</select>
+</div>
 
-<input
-type="date"
-name="expected_delivery"
->
-
+<div class="field" id="tbbCodeField" style="display:none">
+<label>TBB Code</label>
+<input name="tbb_customer_code" id="tbbCustomerCode" placeholder="TBB001" autocomplete="off">
+<div id="tbbHint" style="font-size:12px;color:#6b7280;margin-top:5px"></div>
 </div>
 
 </div>
@@ -3943,15 +3736,10 @@ required
 
 
 <div class="field">
-
-<label>
-Contact Number
-</label>
-
-<input
-name="consignor_contact"
->
-
+<label>GSTIN No.</label><input name="consignor_gstin" id="consignorGstin">
+</div>
+<div class="field">
+<label>Contact Number</label><input name="consignor_contact" id="consignorContact">
 </div>
 
 
@@ -3998,17 +3786,8 @@ required
 </div>
 
 
-<div class="field">
-
-<label>
-Contact Number
-</label>
-
-<input
-name="consignee_contact"
->
-
-</div>
+<div class="field"><label>GSTIN No.</label><input name="consignee_gstin"></div>
+<div class="field"><label>Contact Number</label><input name="consignee_contact"></div>
 
 
 <div class="field full">
@@ -4030,134 +3809,22 @@ name="consignee_address"
 </section>
 
 
-<section class="card">
-
-<div class="ct">
-📦 Goods & Charges
-</div>
-
-<div class="cb">
-
+<section class="card"><div class="ct">📦 Goods & Charges</div><div class="cb">
 <div class="grid3">
-
-
-<div class="field">
-
-<label>
-Packages
-</label>
-
-<input
-type="number"
-min="1"
-name="packages"
-value="1"
-required
->
-
-</div>
-
-
-<div class="field">
-
-<label>
-Weight
-</label>
-
-<input
-name="weight"
-placeholder="e.g. 25 kg"
->
-
-</div>
-
-
-<div class="field">
-
-<label>
-Amount (₹)
-</label>
-
-<input
-name="amount"
-placeholder="e.g. 1250"
->
-
-</div>
-
-<div class="field">
-<label>
-Shipment Value (₹)
-</label>
-<input
-name="shipment_value"
-placeholder="e.g. 50000"
->
-</div>
-
-
-</div>
-
-
-<div
-class="grid"
-style="margin-top:16px"
->
-
-
-<div class="field">
-
-<label>
-Freight Basis
-</label>
-
-<select
-name="freight_basis"
-required
->
-
-<option value="To Pay">
-To Pay
-</option>
-
-<option value="Paid">
-Paid
-</option>
-
-<option value="TBB">
-TBB
-</option>
-
-</select>
-
-</div>
-
-<div class="field" id="tbbCodeField" style="display:none">
-<label>TBB Customer Code</label>
-<input name="tbb_customer_code" id="tbbCustomerCode" placeholder="e.g. TBB001" autocomplete="off">
-<small style="display:block;margin-top:6px;color:#6b7280">Sirf TBB booking ke liye unique customer code.</small>
-</div>
-
-
-<div class="field">
-
-<label>
-Goods Description
-</label>
-
-<input
-name="goods_description"
-placeholder="e.g. House Hold Goods"
->
-
-</div>
-
-</div>
-
-</div>
-
-</section>
-
+<div class="field"><label>Packages</label><input type="number" min="1" name="packages" value="1" required></div>
+<div class="field"><label>Actual Weight</label><input name="actual_weight" placeholder="e.g. 25 kg"></div>
+<div class="field"><label>Charge Weight</label><input name="charge_weight" placeholder="e.g. 25 kg"></div>
+<div class="field"><label>Invoice / Ref. No.</label><input name="invoice_ref"></div>
+<div class="field"><label>Shipment Value (₹)</label><input name="shipment_value"></div>
+<div class="field"><label>Goods Description</label><input name="goods_description"></div>
+<div class="field"><label>Freight (₹)</label><input class="charge" id="freightCharge" name="freight_charge" value="0" inputmode="decimal"></div>
+<div class="field"><label>Handling (₹)</label><input class="charge" id="handlingCharge" name="handling_charge" value="0" inputmode="decimal"></div>
+<div class="field"><label>DD Charge (₹)</label><input class="charge" id="ddCharge" name="dd_charge" value="0" inputmode="decimal"></div>
+<div class="field"><label>Others (₹)</label><input class="charge" id="otherCharge" name="other_charge" value="0" inputmode="decimal"></div>
+<div class="field"><label>Total (₹)</label><input id="chargeTotal" name="charge_total" value="0" readonly></div>
+<div class="field"><label>GST (₹)</label><input id="gstAmount" name="gst_amount" value="0" readonly></div>
+<div class="field"><label>Grand Total (₹)</label><input id="grandTotal" name="grand_total" value="0" readonly></div>
+</div></div></section>
 
 <section class="card">
 
@@ -4224,17 +3891,13 @@ type="submit"
 
 <script>
 (function(){
-    const basis=document.querySelector('select[name="freight_basis"]');
-    const box=document.getElementById('tbbCodeField');
-    const code=document.getElementById('tbbCustomerCode');
-    function toggleTbbCode(){
-        if(!basis||!box||!code)return;
-        const isTbb=basis.value==='TBB';
-        box.style.display=isTbb?'':'none';
-        code.required=isTbb;
-        if(!isTbb) code.value='';
-    }
-    if(basis){basis.addEventListener('change',toggleTbbCode);toggleTbbCode();}
+ const basis=document.getElementById('freightBasis'), box=document.getElementById('tbbCodeField'), code=document.getElementById('tbbCustomerCode');
+ function toggle(){const t=basis.value==='TBB';box.style.display=t?'':'none';code.required=t;if(!t){code.value='';document.getElementById('tbbHint').textContent='';}}
+ basis.addEventListener('change',toggle); toggle();
+ let timer; code.addEventListener('input',()=>{clearTimeout(timer);const c=code.value.trim();if(!c)return;timer=setTimeout(async()=>{try{const r=await fetch('/admin/api/tbb-customer/'+encodeURIComponent(c));const d=await r.json();if(d.ok){document.querySelector('[name=consignor]').value=d.customer.customer_name||'';document.getElementById('consignorContact').value=d.customer.mobile||'';document.getElementById('consignorGstin').value=d.customer.gstin||'';document.querySelector('[name=consignor_address]').value=d.customer.address||'';document.getElementById('tbbHint').textContent='Customer found: '+d.customer.customer_name;}else{document.getElementById('tbbHint').textContent='TBB code not found';}}catch(e){document.getElementById('tbbHint').textContent='Unable to lookup code';}},250);});
+ const charges=['freightCharge','handlingCharge','ddCharge','otherCharge'].map(id=>document.getElementById(id));
+ function calc(){let total=charges.reduce((a,e)=>a+(parseFloat(e.value)||0),0);let gst=total*0.18;document.getElementById('chargeTotal').value=total.toFixed(2);document.getElementById('gstAmount').value=gst.toFixed(2);document.getElementById('grandTotal').value=(total+gst).toFixed(2);}
+ charges.forEach(e=>e.addEventListener('input',calc));calc();
 })();
 </script>
 
@@ -4304,6 +3967,18 @@ def edit_shipment(sid):
 
     data = request.form
 
+    consignor_gstin = data.get("consignor_gstin", old.get("consignor_gstin") or "").strip()
+    consignee_gstin = data.get("consignee_gstin", old.get("consignee_gstin") or "").strip()
+    invoice_ref = data.get("invoice_ref", old.get("invoice_ref") or "").strip()
+    actual_weight = data.get("actual_weight", old.get("actual_weight") or "").strip()
+    charge_weight = data.get("charge_weight", old.get("charge_weight") or "").strip()
+    freight_charge = data.get("freight_charge", old.get("freight_charge") or "0").strip() or "0"
+    handling_charge = data.get("handling_charge", old.get("handling_charge") or "0").strip() or "0"
+    dd_charge = data.get("dd_charge", old.get("dd_charge") or "0").strip() or "0"
+    other_charge = data.get("other_charge", old.get("other_charge") or "0").strip() or "0"
+    charge_total = data.get("charge_total", old.get("charge_total") or "0").strip() or "0"
+    gst_amount = data.get("gst_amount", old.get("gst_amount") or "0").strip() or "0"
+    grand_total = data.get("grand_total", old.get("grand_total") or "0").strip() or "0"
     shipment_value = data.get("shipment_value", "").strip()
     freight_basis = data.get("freight_basis", old.get("freight_basis") or "To Pay").strip() or "To Pay"
     tbb_customer_code = data.get("tbb_customer_code", "").strip().upper()
@@ -4382,10 +4057,23 @@ def edit_shipment(sid):
             location=%s,
             expected_delivery=%s,
             remark=%s,
-            amount=%s,
             freight_basis=%s,
             shipment_value=%s,
             tbb_customer_code=%s,
+            goods_description=%s,
+            consignor_gstin=%s,
+            consignee_gstin=%s,
+            invoice_ref=%s,
+            actual_weight=%s,
+            charge_weight=%s,
+            freight_charge=%s,
+            handling_charge=%s,
+            dd_charge=%s,
+            other_charge=%s,
+            charge_total=%s,
+            gst_amount=%s,
+            grand_total=%s,
+            amount=%s,
             updated_at=%s
         WHERE id=%s
         """,
@@ -4402,10 +4090,12 @@ def edit_shipment(sid):
             location,
             data.get("expected_delivery", ""),
             remark,
-            data.get("amount", "").strip(),
             freight_basis,
             shipment_value,
             tbb_customer_code,
+            data.get("goods_description", old.get("goods_description") or "").strip(),
+            consignor_gstin,consignee_gstin,invoice_ref,actual_weight,charge_weight,
+            freight_charge,handling_charge,dd_charge,other_charge,charge_total,gst_amount,grand_total,grand_total,
             now,
             sid
         )
