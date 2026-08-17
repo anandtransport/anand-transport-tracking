@@ -160,7 +160,8 @@ def init_db():
         "shipment_value": "TEXT",
         "tbb_customer_code": "TEXT",
 
-        "goods_description": "TEXT"
+        "goods_description": "TEXT",
+        "eway_bill_no": "TEXT"
     }
 
     for column, sql_type in extra_columns.items():
@@ -3132,6 +3133,7 @@ def new_shipment():
     consignor_gstin = data.get("consignor_gstin", "").strip()
     consignee_gstin = data.get("consignee_gstin", "").strip()
     invoice_ref = data.get("invoice_ref", "").strip()
+    eway_bill_no = data.get("eway_bill_no", "").strip()
     actual_weight = data.get("actual_weight", "").strip()
     charge_weight = data.get("charge_weight", "").strip()
     freight_charge = data.get("freight_charge", "0").strip() or "0"
@@ -3258,13 +3260,13 @@ def new_shipment():
                 shipment_value,
                 tbb_customer_code,
                 goods_description,
-                consignor_gstin,consignee_gstin,invoice_ref,actual_weight,charge_weight,
+                consignor_gstin,consignee_gstin,invoice_ref,eway_bill_no,actual_weight,charge_weight,
                 freight_charge,handling_charge,dd_charge,other_charge,charge_total,gst_amount,grand_total,charges_approved
             )
             VALUES(
                 %s,%s,%s,%s,%s,%s,%s,%s,%s,
                 %s,%s,%s,%s,%s,%s,%s,%s,%s,
-                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
             )
             RETURNING id
             """,
@@ -3292,7 +3294,7 @@ def new_shipment():
                 shipment_value,
                 tbb_customer_code,
                 goods_description,
-                consignor_gstin,consignee_gstin,invoice_ref,actual_weight,charge_weight,
+                consignor_gstin,consignee_gstin,invoice_ref,eway_bill_no,actual_weight,charge_weight,
                 freight_charge,handling_charge,dd_charge,other_charge,charge_total,gst_amount,grand_total,
                 True if (freight_basis != "TBB" or money_value(grand_total) > 0) else False
             )
@@ -3815,6 +3817,7 @@ name="consignee_address"
 <div class="field"><label>Actual Weight</label><input name="actual_weight" placeholder="e.g. 25 kg"></div>
 <div class="field"><label>Charge Weight</label><input name="charge_weight" placeholder="e.g. 25 kg"></div>
 <div class="field"><label>Invoice / Ref. No.</label><input name="invoice_ref"></div>
+<div class="field"><label>E-Way Bill No.</label><input name="eway_bill_no" placeholder="Enter E-Way Bill No."></div>
 <div class="field"><label>Shipment Value (₹)</label><input name="shipment_value"></div>
 <div class="field"><label>Goods Description</label><input name="goods_description"></div>
 <div class="field"><label>Freight (₹)</label><input class="charge" id="freightCharge" name="freight_charge" value="0" inputmode="decimal"></div>
@@ -3822,7 +3825,7 @@ name="consignee_address"
 <div class="field"><label>DD Charge (₹)</label><input class="charge" id="ddCharge" name="dd_charge" value="0" inputmode="decimal"></div>
 <div class="field"><label>Others (₹)</label><input class="charge" id="otherCharge" name="other_charge" value="0" inputmode="decimal"></div>
 <div class="field"><label>Total (₹)</label><input id="chargeTotal" name="charge_total" value="0" readonly></div>
-<div class="field"><label>GST (₹)</label><input id="gstAmount" name="gst_amount" value="0" readonly></div>
+<div class="field"><label>GST Charge (₹) - Manual</label><input id="gstAmount" name="gst_amount" value="0" inputmode="decimal" placeholder="Enter GST amount manually"></div>
 <div class="field"><label>Grand Total (₹)</label><input id="grandTotal" name="grand_total" value="0" readonly></div>
 </div></div></section>
 
@@ -3896,8 +3899,11 @@ type="submit"
  basis.addEventListener('change',toggle); toggle();
  let timer; code.addEventListener('input',()=>{clearTimeout(timer);const c=code.value.trim();if(!c)return;timer=setTimeout(async()=>{try{const r=await fetch('/admin/api/tbb-customer/'+encodeURIComponent(c));const d=await r.json();if(d.ok){document.querySelector('[name=consignor]').value=d.customer.customer_name||'';document.getElementById('consignorContact').value=d.customer.mobile||'';document.getElementById('consignorGstin').value=d.customer.gstin||'';document.querySelector('[name=consignor_address]').value=d.customer.address||'';document.getElementById('tbbHint').textContent='Customer found: '+d.customer.customer_name;}else{document.getElementById('tbbHint').textContent='TBB code not found';}}catch(e){document.getElementById('tbbHint').textContent='Unable to lookup code';}},250);});
  const charges=['freightCharge','handlingCharge','ddCharge','otherCharge'].map(id=>document.getElementById(id));
- function calc(){let total=charges.reduce((a,e)=>a+(parseFloat(e.value)||0),0);let gst=total*0.18;document.getElementById('chargeTotal').value=total.toFixed(2);document.getElementById('gstAmount').value=gst.toFixed(2);document.getElementById('grandTotal').value=(total+gst).toFixed(2);}
- charges.forEach(e=>e.addEventListener('input',calc));calc();
+ const gstInput=document.getElementById('gstAmount');
+ function calc(){let total=charges.reduce((a,e)=>a+(parseFloat(e.value)||0),0);let gst=parseFloat(gstInput.value)||0;document.getElementById('chargeTotal').value=total.toFixed(2);document.getElementById('grandTotal').value=(total+gst).toFixed(2);}
+ charges.forEach(e=>e.addEventListener('input',calc));
+ gstInput.addEventListener('input',calc);
+ calc();
 })();
 </script>
 
@@ -3970,6 +3976,7 @@ def edit_shipment(sid):
     consignor_gstin = data.get("consignor_gstin", old.get("consignor_gstin") or "").strip()
     consignee_gstin = data.get("consignee_gstin", old.get("consignee_gstin") or "").strip()
     invoice_ref = data.get("invoice_ref", old.get("invoice_ref") or "").strip()
+    eway_bill_no = data.get("eway_bill_no", old.get("eway_bill_no") or "").strip()
     actual_weight = data.get("actual_weight", old.get("actual_weight") or "").strip()
     charge_weight = data.get("charge_weight", old.get("charge_weight") or "").strip()
     freight_charge = data.get("freight_charge", old.get("freight_charge") or "0").strip() or "0"
@@ -4064,6 +4071,7 @@ def edit_shipment(sid):
             consignor_gstin=%s,
             consignee_gstin=%s,
             invoice_ref=%s,
+            eway_bill_no=%s,
             actual_weight=%s,
             charge_weight=%s,
             freight_charge=%s,
@@ -4094,7 +4102,7 @@ def edit_shipment(sid):
             shipment_value,
             tbb_customer_code,
             data.get("goods_description", old.get("goods_description") or "").strip(),
-            consignor_gstin,consignee_gstin,invoice_ref,actual_weight,charge_weight,
+            consignor_gstin,consignee_gstin,invoice_ref,eway_bill_no,actual_weight,charge_weight,
             freight_charge,handling_charge,dd_charge,other_charge,charge_total,gst_amount,grand_total,grand_total,
             now,
             sid
