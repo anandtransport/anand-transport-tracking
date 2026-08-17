@@ -845,27 +845,30 @@ def generate_gr_no():
     con = db()
     cur = con.cursor()
 
-    prefix = datetime.now().strftime(
-        "ATC-%Y%m%d"
-    )
-
+    # Generate simple sequential Consignment / GR numbers:
+    # 0001, 0002, 0003, ...
+    # Existing old-format GR numbers are preserved.
     cur.execute(
         """
-        SELECT COUNT(*) AS c
+        SELECT docket
         FROM shipments
-        WHERE docket LIKE %s
-        """,
-        (
-            prefix + "%",
-        )
+        WHERE docket ~ '^[0-9]+$'
+        ORDER BY CAST(docket AS INTEGER) DESC
+        LIMIT 1
+        """
     )
 
-    count = cur.fetchone()["c"] + 1
+    row = cur.fetchone()
+
+    if row and row["docket"]:
+        next_no = int(row["docket"]) + 1
+    else:
+        next_no = 1
 
     cur.close()
     con.close()
 
-    return f"{prefix}-{count:04d}"
+    return f"{next_no:04d}"
 
 
 # =========================================================
